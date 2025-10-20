@@ -1,8 +1,9 @@
+'use client'
 import { Header } from "@/components/header"
-// import { SearchBar } from "@/components/search-bar"
-// import { CategoryFilter } from "@/components/category-filter"
-// import { ListingCard } from "@/components/listing-card"
-// import { Button } from "@/components/ui/button"
+import { SearchBar } from "@/components/search-bar"
+import { CategoryFilter } from "@/components/category-filter"
+import { ListingCard } from "@/components/listing-card"
+import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
 
 const featuredListings = [
@@ -103,13 +104,13 @@ export default function Home() {
               Discover thousands of items available for rent in your community. From cameras to tools, music gear to sports equipment.
             </p>
             <div className="max-w-2xl mx-auto pt-4">
-              {/* <SearchBar placeholder="Search for cameras, tools, equipment..." /> */}
+              <SearchBar placeholder="Search for cameras, tools, equipment..." />
             </div>
           </div>
         </div>
       </div>
 
-      {/* <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-8 py-8">
         <div className="space-y-8">
           <div>
             <h2 className="text-2xl font-semibold mb-4">Browse by Category</h2>
@@ -143,7 +144,7 @@ export default function Home() {
             </Button>
           </div>
         </div>
-      </div> */}
+      </div>
 
       <footer className="border-t mt-16">
         <div className="container mx-auto px-4 py-8">
