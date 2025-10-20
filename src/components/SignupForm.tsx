@@ -23,7 +23,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import {} from 'lucide-react'
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 const formSchema = z.object({
   email: z.email(),
   password: z.string().min(8),
@@ -38,8 +39,36 @@ export default function SignupPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  const router = useRouter();
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error("Registration failed");
+      }
+
+      const signInResponse = await signIn("credentials", {
+        email: values.email,
+        password: values.password,
+        redirect: false,
+      });
+
+      if (signInResponse?.error) {
+        throw new Error(signInResponse.error);
+      }
+
+      router.push("/");
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   return (
