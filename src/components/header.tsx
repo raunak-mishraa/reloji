@@ -4,6 +4,7 @@ import { SearchBar } from "@/components/search-bar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { UserAvatar } from "@/components/user-avatar"
 import { Menu, Package } from "lucide-react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import {
   DropdownMenu,
@@ -19,6 +20,7 @@ interface HeaderProps {
 }
 
 export function Header({ isAuthenticated = false }: HeaderProps) {
+  const router = useRouter();
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-8">
@@ -35,7 +37,7 @@ export function Header({ isAuthenticated = false }: HeaderProps) {
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            
+
             {isAuthenticated ? (
               <>
                 <Button variant="default" size="sm" data-testid="button-list-item">
@@ -61,10 +63,19 @@ export function Header({ isAuthenticated = false }: HeaderProps) {
               </>
             ) : (
               <>
-                <Button variant="ghost" size="sm" data-testid="button-login">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  data-testid="button-login"
+                  onClick={() => router.push('/signin')}
+                >
                   Log in
                 </Button>
-                <Button variant="default" size="sm" data-testid="button-signup">
+                <Button
+                  variant="default"
+                  size="sm"
+                  data-testid="button-signup"
+                  onClick={() => router.push('/signup')}>
                   Sign up
                 </Button>
               </>
