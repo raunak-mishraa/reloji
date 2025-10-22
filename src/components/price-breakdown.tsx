@@ -19,21 +19,21 @@ export function PriceBreakdown({ pricePerDay, days, depositAmount, serviceFee = 
       <div className="space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground" data-testid="text-rental-label">
-            ${pricePerDay} × {days} {days === 1 ? "day" : "days"}
+            ₹{pricePerDay} × {days} {days === 1 ? "day" : "days"}
           </span>
-          <span data-testid="text-rental-amount">${rentalFee}</span>
+          <span data-testid="text-rental-amount">₹{rentalFee}</span>
         </div>
         
         {serviceFee > 0 && (
           <div className="flex justify-between">
             <span className="text-muted-foreground">Service fee</span>
-            <span data-testid="text-service-fee">${serviceFee}</span>
+            <span data-testid="text-service-fee">₹{serviceFee}</span>
           </div>
         )}
         
         <div className="flex justify-between">
           <span className="text-muted-foreground">Refundable deposit</span>
-          <span data-testid="text-deposit">${depositAmount}</span>
+          <span data-testid="text-deposit">₹{depositAmount}</span>
         </div>
       </div>
 
@@ -42,16 +42,16 @@ export function PriceBreakdown({ pricePerDay, days, depositAmount, serviceFee = 
       <div className="space-y-2">
         <div className="flex justify-between font-semibold">
           <span>Total</span>
-          <span data-testid="text-total">${total}</span>
+          <span data-testid="text-total">₹{total}</span>
         </div>
         <div className="flex justify-between text-sm text-muted-foreground">
           <span>Due now (incl. deposit)</span>
-          <span data-testid="text-due-now">${total + depositAmount}</span>
+          <span data-testid="text-due-now">₹{total + depositAmount}</span>
         </div>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Your deposit of ${depositAmount} will be refunded after the item is returned in good condition.
+        Your deposit of ₹{depositAmount} will be refunded after the item is returned in good condition.
       </p>
     </Card>
   )

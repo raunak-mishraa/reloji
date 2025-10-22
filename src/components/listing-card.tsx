@@ -71,7 +71,7 @@ export function ListingCard({
         <div className="pt-2 border-t">
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold text-primary" data-testid="text-price">
-              ${pricePerDay}
+              ₹{pricePerDay}
             </span>
             <span className="text-sm text-muted-foreground">/ day</span>
           </div>

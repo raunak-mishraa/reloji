@@ -1,3 +1,7 @@
+import { Header } from "@/components/header"
+import Footer from "@/components/Footer";;
+import CategoryBar from "@/components/CategoryBar";
+import ReactQueryProvider from "@/components/ReactQueryProvider";
 
 export default function RootLayout({
   children,
@@ -5,8 +9,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="">
-        {children}
-    </div>
+    <ReactQueryProvider>
+      <div className="">
+        <Header />
+        <CategoryBar />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </div>
+    </ReactQueryProvider>
   );
 }

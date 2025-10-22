@@ -7,6 +7,9 @@ import { z } from "zod";
 import { FaGoogle, FaApple } from "react-icons/fa";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -18,6 +21,10 @@ const formSchema = z.object({
 });
 
 export default function SigninForm() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "", password: "" },
@@ -26,6 +33,8 @@ export default function SigninForm() {
   const router = useRouter();
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
+    setError(null);
     try {
       const signInResponse = await signIn("credentials", {
         email: values.email,
@@ -34,14 +43,14 @@ export default function SigninForm() {
       });
 
       if (signInResponse?.error) {
-        // You can add state to show an error message to the user
-        console.error(signInResponse.error);
-        throw new Error(signInResponse.error);
+        setError("Invalid email or password. Please try again.");
+      } else {
+        router.push("/");
       }
-
-      router.push("/");
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -52,12 +61,30 @@ export default function SigninForm() {
         <CardDescription>
           Enter your email and password to access your account
         </CardDescription>
+        {error && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Social buttons */}
         <div className="grid grid-cols-2 gap-4">
-          <Button variant="outline"><FaGoogle/></Button>
-          <Button variant="outline"><FaApple/></Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => signIn('google', { callbackUrl: '/' })}
+          >
+            <FaGoogle/>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => signIn('apple', { callbackUrl: '/' })}
+          >
+            <FaApple/>
+          </Button>
         </div>
 
         {/* Divider */}
@@ -103,13 +130,23 @@ export default function SigninForm() {
                     </Link>
                   </div>
                   <FormControl>
-                    <Input type="password" {...field} />
+                    <div className="relative">
+                      <Input type={showPassword ? "text" : "password"} {...field} />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign in
             </Button>
           </form>

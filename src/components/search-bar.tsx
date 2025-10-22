@@ -9,7 +9,7 @@ interface SearchBarProps {
   onSearch?: (query: string) => void
 }
 
-export function SearchBar({ placeholder = "Search for items...", onSearch }: SearchBarProps) {
+export function SearchBar({ placeholder = "Search for items...", onSearch }: { placeholder?: string, onSearch?: (query: string) => void }) {
   const [query, setQuery] = useState("")
 
   const handleSearch = (value: string) => {
@@ -19,16 +19,15 @@ export function SearchBar({ placeholder = "Search for items...", onSearch }: Sea
   }
 
   return (
-    <div className="relative w-full">
+    <form className="relative w-full" onSubmit={(e) => { e.preventDefault(); onSearch?.(e.currentTarget.search.value); }}>
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       <Input
         type="search"
+        name="search"
         placeholder={placeholder}
-        value={query}
-        onChange={(e) => handleSearch(e.target.value)}
-        className="pl-10"
+        className="w-full h-12 pl-12 pr-4 rounded-full bg-background shadow-none appearance-none"
         data-testid="input-search"
       />
-    </div>
+    </form>
   )
 }

@@ -50,7 +50,7 @@ export function BookingCard({
                 {itemTitle}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {isOwner ? `Borrower: ${borrowerName}` : `Owner: ${ownerName}`}
+                {isOwner ? `Borrower: ₹{borrowerName}` : `Owner: ₹{ownerName}`}
               </p>
             </div>
             <BookingStatusBadge status={status} />
@@ -65,8 +65,8 @@ export function BookingCard({
             </div>
             <div className="flex items-center gap-1">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
-              <span data-testid="text-booking-amount">${totalAmount}</span>
-              <span className="text-muted-foreground">(+${depositHeld} deposit)</span>
+              <span data-testid="text-booking-amount">₹{totalAmount}</span>
+              <span className="text-muted-foreground">(+₹{depositHeld} deposit)</span>
             </div>
           </div>
 

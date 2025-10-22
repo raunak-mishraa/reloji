@@ -25,12 +25,19 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 const formSchema = z.object({
-  email: z.email(),
+  email: z.string().email(),
   password: z.string().min(8),
 });
 
 export default function SignupPage() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -42,6 +49,8 @@ export default function SignupPage() {
   const router = useRouter();
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
+    setError(null);
     try {
       const response = await fetch("/api/register", {
         method: "POST",
@@ -52,7 +61,8 @@ export default function SignupPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Registration failed");
+        const data = await response.json();
+        throw new Error(data.message || "Registration failed");
       }
 
       const signInResponse = await signIn("credentials", {
@@ -66,8 +76,10 @@ export default function SignupPage() {
       }
 
       router.push("/");
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -78,13 +90,27 @@ export default function SignupPage() {
         <CardDescription>
           Enter your email below to create your account
         </CardDescription>
+        {error && (
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <Button variant="outline">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => signIn('google', { callbackUrl: '/' })}
+          >
             <FaGoogle/>
           </Button>
-          <Button variant="outline">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => signIn('apple', { callbackUrl: '/' })}
+          >
            <FaApple/>
           </Button>
         </div>
@@ -120,13 +146,25 @@ export default function SignupPage() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" {...field} />
+                    <div className="relative">
+                      <Input type={showPassword ? "text" : "password"} {...field} />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">Create account</Button>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create account
+            </Button>
           </form>
         </Form>
       </CardContent>

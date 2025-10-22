@@ -12,7 +12,19 @@ enum Role {
   ADMIN
 }
 
+enum ItemCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  FAIR
+}
+
 enum ListingStatus {
+
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
   ACTIVE
   PAUSED
   REMOVED
@@ -21,23 +33,26 @@ enum ListingStatus {
 enum BookingStatus {
   PENDING
   APPROVED
+  REJECTED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
   ACTIVE
   RETURNED
-  COMPLETED
-  CANCELLED
   DISPUTE
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  role          Role      @default(USER)
-  createdAt     DateTime  @default(now())
-  stripeCustomerId String?
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String?   @unique
+  emailVerified      DateTime?
+  image              String?
+  password           String?
+  role               Role      @default(USER)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime? @default(now())
+  stripeCustomerId   String?   @unique
 
   accounts      Account[]
   sessions      Session[]
@@ -45,62 +60,125 @@ model User {
   listings      Listing[]
   bookings      Booking[] @relation("borrowerBookings")
   notifications Notification[]
+  reviews       Review[]
+  sentUserReviews     UserReview[]    @relation("sentUserReviews")
+  receivedUserReviews UserReview[]    @relation("receivedUserReviews")
+  conversations Conversation[] @relation("userConversations")
+  messages      Message[]
 }
 
 model Profile {
   id        String  @id @default(cuid())
   userId    String  @unique
-  user      User    @relation(fields: [userId], references: [id])
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   bio       String?
   rating    Float   @default(0)
-  phone     String?
+  phone     String? @unique
   avatarUrl String?
   verified  Boolean @default(false)
 }
 
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  listings Listing[]
+}
+
 model Listing {
-  id            String        @id @default(cuid())
-  ownerId       String
-  owner         User          @relation(fields: [ownerId], references: [id])
-  title         String
-  slug          String        @unique
-  description   String
-  category      String
-  pricePerDay   Float
-  depositAmount Float
-  location      Json
-  images        String[]
-  availability  Json
-  status        ListingStatus @default(ACTIVE)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  bookings      Booking[]
-  rating        Float         @default(0)
+  id                  String        @id @default(cuid())
+  ownerId             String
+  owner               User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title               String
+  slug                String        @unique
+  description         String
+  pricePerHour        Float?
+  pricePerDay         Float
+  depositAmount       Float
+  location            Json
+  availability        Json
+  rules               String?
+  maxBorrowDuration   Int? // in days
+  cancellationPolicy  String?
+  status              ListingStatus @default(ACTIVE)
+  deletedAt           DateTime?     // for soft deletes
+  rating              Float         @default(0)
+  condition           ItemCondition @default(NEW)
+
+  categoryId          String
+  category            Category      @relation(fields: [categoryId], references: [id])
+
+  images              Image[]
+  bookings            Booking[]
+  reviews             Review[]
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+model Image {
+  id        String  @id @default(cuid())
+  url       String
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 }
 
 model Booking {
-  id                      String        @id @default(cuid())
-  listingId               String
-  listing                 Listing       @relation(fields: [listingId], references: [id])
-  borrowerId              String
-  borrower                User          @relation("borrowerBookings", fields: [borrowerId], references: [id])
-  startDate               DateTime
-  endDate                 DateTime
-  totalAmount             Float
-  depositHeld             Float
-  status                  BookingStatus @default(PENDING)
-  stripePaymentIntentId   String?
-  createdAt               DateTime      @default(now())
-  updatedAt               DateTime      @updatedAt
+  id                String        @id @default(cuid())
+  listingId         String
+  listing           Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  borrowerId        String
+  borrower          User          @relation("borrowerBookings", fields: [borrowerId], references: [id])
+  startDate         DateTime
+  endDate           DateTime
+  totalAmount       Float
+  depositHeld       Float
+  status            BookingStatus @default(PENDING)
+  razorpayPaymentId String?       @unique
+  expiresAt         DateTime?     // for auto-expiring pending requests
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  conversation Conversation? // Relation to a conversation
+  userReviews  UserReview[]
+}
+
+model Conversation {
+  id           String    @id @default(cuid())
+  bookingId    String    @unique
+  booking      Booking   @relation(fields: [bookingId], references: [id])
+  participants User[]    @relation("userConversations")
+  messages     Message[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  content        String
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
 }
 
 model Review {
   id         String   @id @default(cuid())
-  bookingId  String   @unique
   rating     Int
   comment    String?
+  bookingId  String?   @unique
+
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
   reviewerId String
+  reviewer   User     @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+
   createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([listingId, reviewerId])
 }
 
 model Notification {
@@ -110,6 +188,24 @@ model Notification {
   message   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// A review from one user to another tied to a completed booking
+model UserReview {
+  id           String   @id @default(cuid())
+  bookingId    String
+  booking      Booking  @relation(fields: [bookingId], references: [id])
+  fromUserId   String
+  fromUser     User     @relation("sentUserReviews", fields: [fromUserId], references: [id])
+  toUserId     String
+  toUser       User     @relation("receivedUserReviews", fields: [toUserId], references: [id])
+  rating       Int      // 1-5
+  comment      String?
+  createdAt    DateTime @default(now())
+
+  @@index([toUserId])
+  @@index([fromUserId])
+  @@unique([bookingId, fromUserId, toUserId])
 }
 
 // --- Authentication Models ---
