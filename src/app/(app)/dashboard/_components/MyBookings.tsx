@@ -34,6 +34,7 @@ interface Booking {
     image: string | null;
   };
   borrowerId: string; // needed for user review
+  conversation?: { id: string } | null;
 }
 
 export default function MyBookings() {
@@ -67,21 +68,21 @@ export default function MyBookings() {
     setBookings(bookings.map(b => b.id === bookingId ? { ...b, status: 'UPDATING' } : b));
 
     try {
-      const response = await fetch(`/api/bookings/${bookingId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
+      const endpoint = status === 'APPROVED'
+        ? `/api/bookings/${bookingId}/approve`
+        : `/api/bookings/${bookingId}/reject`;
+      const response = await fetch(endpoint, { method: 'POST' });
 
       if (!response.ok) {
-        throw new Error('Failed to update status');
+        const t = await response.text();
+        throw new Error(t || 'Failed to update status');
       }
 
       const updatedBooking = await response.json();
       setBookings(bookings.map(b => b.id === bookingId ? updatedBooking : b));
-    } catch (err) {
+    } catch (err: any) {
       setBookings(originalBookings);
-      alert('Failed to update booking status.');
+      alert(err?.message || 'Failed to update booking status.');
     }
   };
 
@@ -139,30 +140,39 @@ export default function MyBookings() {
           <TableRow key={booking.id}>
             <TableCell>
               <div className="flex items-center space-x-4">
-                <img src={booking.listing.images[0]?.url || '/placeholder.svg'} alt={booking.listing.title} className="w-16 h-16 object-cover rounded-md" />
-                <span className="font-medium">{booking.listing.title}</span>
+                <img
+                  src={booking.listing?.images?.[0]?.url || '/placeholder.svg'}
+                  alt={booking.listing?.title || 'Listing thumbnail'}
+                  className="w-16 h-16 object-cover rounded-md"
+                />
+                <span className="font-medium">{booking.listing?.title || 'Listing'}</span>
               </div>
             </TableCell>
             <TableCell>
                 <div className="flex items-center space-x-2">
-                    <img src={booking.borrower.image || '/placeholder.svg'} alt={booking.borrower.name || ''} className="w-8 h-8 rounded-full" />
-                    <span>{booking.borrower.name}</span>
+                    <img src={booking.borrower?.image || '/placeholder.svg'} alt={booking.borrower?.name || ''} className="w-8 h-8 rounded-full" />
+                    <span>{booking.borrower?.name || 'User'}</span>
                 </div>
             </TableCell>
             <TableCell>{format(new Date(booking.startDate), 'MMM d')} - {format(new Date(booking.endDate), 'MMM d, yyyy')}</TableCell>
-            <TableCell>${booking.totalAmount.toFixed(2)}</TableCell>
+            <TableCell>${(booking.totalAmount ?? 0).toFixed(2)}</TableCell>
             <TableCell><Badge>{booking.status}</Badge></TableCell>
             <TableCell>
-              {booking.status === 'PENDING' && (
-                <div className="flex space-x-2">
-                  <Button size="sm" onClick={() => handleStatusUpdate(booking.id, 'APPROVED')}>Approve</Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(booking.id, 'REJECTED')}>Decline</Button>
-                </div>
-              )}
-              {booking.status === 'UPDATING' && <Loader2 className="h-4 w-4 animate-spin" />}
-              {(booking.status === 'COMPLETED' || booking.status === 'RETURNED') && (
-                <Button size="sm" variant="secondary" onClick={() => openReview(booking)}>Rate borrower</Button>
-              )}
+              <div className="flex items-center gap-2">
+                {booking.status === 'PENDING' && (
+                  <>
+                    <Button size="sm" onClick={() => handleStatusUpdate(booking.id, 'APPROVED')}>Approve</Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(booking.id, 'REJECTED')}>Decline</Button>
+                  </>
+                )}
+                {booking.status === 'UPDATING' && <Loader2 className="h-4 w-4 animate-spin" />}
+                {(booking.status === 'COMPLETED' || booking.status === 'RETURNED') && (
+                  <Button size="sm" variant="secondary" onClick={() => openReview(booking)}>Rate borrower</Button>
+                )}
+                <a href={booking?.conversation?.id ? `/messages/${booking.conversation.id}` : '/messages'}>
+                  <Button size="sm" variant="outline">Message</Button>
+                </a>
+              </div>
             </TableCell>
           </TableRow>
         ))}

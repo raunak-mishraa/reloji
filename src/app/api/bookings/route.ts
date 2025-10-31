@@ -26,6 +26,22 @@ export async function POST(req: Request) {
       return new NextResponse("Listing not found", { status: 404 });
     }
 
+    if (listing.ownerId === session.user.id) {
+      return new NextResponse("You cannot book your own listing", { status: 403 });
+    }
+
+    const existingBookingByUser = await prisma.booking.findFirst({
+      where: {
+        listingId: listingId,
+        borrowerId: session.user.id,
+        status: { in: ["PENDING", "CONFIRMED", "ACTIVE"] },
+      },
+    });
+
+    if (existingBookingByUser) {
+      return new NextResponse("You have already requested to book this item", { status: 409 });
+    }
+
     // --- Availability Check ---
     const existingBooking = await prisma.booking.findFirst({
       where: {

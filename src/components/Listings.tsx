@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import ListingCard from "@/components/ListingCard";
+import { ListingCard as SearchListingCard } from "@/components/listing-card";
 import { Button } from "@/components/ui/button";
 import ListingCardSkeleton from "@/components/ListingCardSkeleton";
 import { Loader2, PackageOpen, AlertCircle } from "lucide-react";
@@ -14,6 +14,10 @@ interface Listing {
   title: string;
   pricePerDay: number;
   images: { url: string }[];
+  category?: { name: string };
+  rating?: number;
+  reviewCount?: number;
+  location?: { city?: string };
 }
 
 type ListingsFilters = {
@@ -114,7 +118,17 @@ export default function Listings(props: ListingsFilters = {}) {
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {listings.map((listing) => (
-          <ListingCard key={listing.id} listing={listing} />
+          <SearchListingCard
+            key={listing.id}
+            id={listing.id}
+            title={listing.title}
+            category={listing.category?.name ?? "General"}
+            pricePerDay={listing.pricePerDay}
+            location={listing.location?.city ?? "Unknown"}
+            image={listing.images?.[0]?.url ?? "/placeholder.svg"}
+            rating={listing.rating ?? 0}
+            reviewCount={listing.reviewCount ?? 0}
+          />
         ))}
       </div>
       {isLoading && (

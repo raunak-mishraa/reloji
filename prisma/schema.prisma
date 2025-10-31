@@ -44,7 +44,7 @@ enum BookingStatus {
 
 model User {
   id                 String    @id @default(cuid())
-  name               String?
+  name               String
   email              String?   @unique
   emailVerified      DateTime?
   image              String?
@@ -65,6 +65,8 @@ model User {
   receivedUserReviews UserReview[]    @relation("receivedUserReviews")
   conversations Conversation[] @relation("userConversations")
   messages      Message[]
+  createdCircles Circle[] @relation("circleCreator")
+  memberships    CircleMember[]
 }
 
 model Profile {
@@ -113,6 +115,9 @@ model Listing {
 
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
+
+  circleId            String?
+  circle              Circle?       @relation(fields: [circleId], references: [id])
 }
 
 model Image {
@@ -145,7 +150,7 @@ model Booking {
 model Conversation {
   id           String    @id @default(cuid())
   bookingId    String    @unique
-  booking      Booking   @relation(fields: [bookingId], references: [id])
+  booking      Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   participants User[]    @relation("userConversations")
   messages     Message[]
   createdAt    DateTime  @default(now())
@@ -155,7 +160,7 @@ model Conversation {
 model Message {
   id             String       @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   senderId       String
   sender         User         @relation(fields: [senderId], references: [id])
   content        String
@@ -194,7 +199,7 @@ model Notification {
 model UserReview {
   id           String   @id @default(cuid())
   bookingId    String
-  booking      Booking  @relation(fields: [bookingId], references: [id])
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   fromUserId   String
   fromUser     User     @relation("sentUserReviews", fields: [fromUserId], references: [id])
   toUserId     String
@@ -242,4 +247,36 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+
+enum CirclePrivacy {
+  PUBLIC
+  PRIVATE
+}
+
+model Circle {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  slug        String        @unique
+  description String?
+  bannerImage String?
+  privacy     CirclePrivacy @default(PUBLIC)
+  creatorId   String
+  creator     User          @relation("circleCreator", fields: [creatorId], references: [id])
+  members     CircleMember[]
+  listings    Listing[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model CircleMember {
+  id        String   @id @default(cuid())
+  circleId  String
+  circle    Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([circleId, userId])
 }

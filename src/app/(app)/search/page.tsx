@@ -8,6 +8,7 @@ import SearchFilters from '@/components/SearchFilters';
 function SearchPageContent() {
   const searchParams = useSearchParams();
   const category = searchParams.get('category') || undefined;
+  const search = searchParams.get('search') || undefined;
 
   // This will eventually hold state for all filters
   const [filters, setFilters] = React.useState({});
@@ -20,7 +21,7 @@ function SearchPageContent() {
         </div>
         <div className="md:col-span-3">
           <h1 className="text-3xl font-bold mb-6">{category || 'All Listings'}</h1>
-          <Listings categoryId={category} {...filters} />
+          <Listings categoryId={category} search={search} {...filters} />
         </div>
       </div>
     </div>

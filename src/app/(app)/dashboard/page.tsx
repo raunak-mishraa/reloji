@@ -4,7 +4,7 @@ import MyBookings from "./_components/MyBookings";
 
 export default function DashboardPage() {
   return (
-    <div className="container mx-auto py-12">
+    <div className="container mx-auto py-12 sm:px-8 px-4">
       <h1 className="text-3xl font-bold mb-8">Owner Dashboard</h1>
       <Tabs defaultValue="listings">
         <TabsList className="grid w-full grid-cols-2 max-w-md">

@@ -23,6 +23,7 @@ export async function GET() {
         borrower: {
           select: { name: true, image: true },
         },
+        conversation: { select: { id: true } },
       },
       orderBy: {
         createdAt: "desc",

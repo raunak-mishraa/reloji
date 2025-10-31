@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     where.OR = [
       { title: { contains: search, mode: "insensitive" } },
       { description: { contains: search, mode: "insensitive" } },
-      { location: { contains: search, mode: "insensitive" } },
+      // NOTE: Prisma does not support `contains` on JSON. We'll handle location text match in-app.
     ];
   }
 
@@ -36,12 +36,7 @@ export async function GET(req: NextRequest) {
     where.categoryId = categoryId;
   }
 
-  if (location) {
-    if (!where.OR) {
-      where.OR = [];
-    }
-    where.OR.push({ location: { contains: location, mode: 'insensitive' } });
-  }
+  // If `location` is provided, we'll filter by location text in application layer
 
   if (minPrice || maxPrice) {
     where.pricePerDay = {};
@@ -76,8 +71,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const listings = await prisma.listing.findMany({
-      take: limit,
+    // Over-fetch to allow in-app filtering by location while keeping pagination roughly consistent
+    const take = Math.max(limit, 10);
+    const fetchCount = take * 3;
+    const raw = await prisma.listing.findMany({
+      take: fetchCount,
       ...(cursor && { skip: 1, cursor: { id: cursor } }),
       where,
       orderBy: {
@@ -92,9 +90,31 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    let nextCursor = null;
-    if (listings.length === limit) {
-      nextCursor = listings[limit - 1].id;
+    // Application-layer location text filter on JSON field
+    const locationQuery = location || null;
+    let filtered = raw;
+    if (locationQuery || search) {
+      const q = (locationQuery || "").toString().toLowerCase();
+      filtered = raw.filter((l: any) => {
+        const loc = l.location || {};
+        const city = (loc.city || "").toString().toLowerCase();
+        const state = (loc.state || "").toString().toLowerCase();
+        const country = (loc.country || "").toString().toLowerCase();
+        const address = (loc.address || "").toString().toLowerCase();
+        // If explicit location param, match against location fields
+        if (locationQuery) {
+          return (
+            city.includes(q) || state.includes(q) || country.includes(q) || address.includes(q)
+          );
+        }
+        return true;
+      });
+    }
+
+    const listings = filtered.slice(0, limit);
+    let nextCursor = null as string | null;
+    if (filtered.length > limit) {
+      nextCursor = filtered[limit - 1]?.id ?? null;
     }
 
     return NextResponse.json({ listings, nextCursor });
@@ -121,6 +141,7 @@ export async function POST(req: Request) {
       depositAmount,
       location,
       imageUrls,
+      circleId,
       // Add other fields from your form here
     } = body;
 
@@ -131,6 +152,20 @@ export async function POST(req: Request) {
 
     const slugBase = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const slug = `${slugBase}-${Date.now()}`;
+
+    if (circleId) {
+      const membership = await prisma.circleMember.findUnique({
+        where: {
+          circleId_userId: {
+            circleId: circleId,
+            userId: session.user.id,
+          },
+        },
+      });
+      if (!membership) {
+        return new NextResponse("You are not a member of this circle.", { status: 403 });
+      }
+    }
 
     const listing = await prisma.listing.create({
       data: {
@@ -149,6 +184,7 @@ export async function POST(req: Request) {
         maxBorrowDuration: body.maxBorrowDuration ?? null,
         cancellationPolicy: body.cancellationPolicy ?? null,
         condition: body.condition ?? undefined,
+        circleId: circleId || undefined,
         images: imageUrls?.length
           ? {
               create: imageUrls.map((url: string) => ({ url })),

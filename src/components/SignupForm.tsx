@@ -2,13 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
+  AuthCard,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/ui/auth-card";
 import { FaGoogle, FaApple } from "react-icons/fa";
 import {
   Form,
@@ -29,8 +29,9 @@ import { useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 const formSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
 export default function SignupPage() {
@@ -41,6 +42,7 @@ export default function SignupPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: "",
       email: "",
       password: "",
     },
@@ -84,7 +86,7 @@ export default function SignupPage() {
   }
 
   return (
-    <Card>
+    <AuthCard>
       <CardHeader className="text-center">
         <CardTitle>Create an account</CardTitle>
         <CardDescription>
@@ -126,6 +128,19 @@ export default function SignupPage() {
         </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             <FormField
               control={form.control}
               name="email"
@@ -179,6 +194,6 @@ export default function SignupPage() {
           </Link>
         </p>
       </CardFooter>
-    </Card>
+    </AuthCard>
   );
 }

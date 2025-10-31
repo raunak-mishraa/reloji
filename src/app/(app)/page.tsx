@@ -6,13 +6,27 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
 import Listings from "@/components/Listings";
 import CategoryGrid from "@/components/CategoryGrid";
+import { useRouter } from "next/navigation";
+import { useAppSelector } from "@/store/hooks";
+import Image from "next/image";
 
 export default function Home() {
   const [filters, setFilters] = useState<{ search?: string }>({});
+  const auth = useAppSelector(s => s.auth);
+  const isAuthenticated = auth.status === 'authenticated';
+  const router = useRouter();
+
+  const handleStartListing = () => {
+    if (!isAuthenticated) {
+      router.push('/api/auth/signin');
+      return;
+    }
+    router.push('/listings/new');
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="relative bg-gradient-to-b from-primary/10 to-background">
+      {/* <div className="relative bg-gradient-to-b from-primary/10 to-background">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
@@ -26,34 +40,32 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </div>
-
+      </div> */}
+  <Image src="/assets/images/hero/4.jpg" alt="Hero" width={1000} height={600} className="w-full h-64 sm:h-80 object-cover" />
       <div className="container mx-auto px-8 py-8">
         <div className="space-y-12">
           <CategoryGrid />
 
-          <div>
+          {/* <div>
             <h2 className="text-2xl font-bold mb-6">Featured Listings</h2>
             <Listings />
-          </div>
+          </div> */}
 
-          <div>
+          {/* <div>
             <h2 className="text-2xl font-bold mb-6">Nearby Listings</h2>
             <Listings />
-          </div>
+          </div> */}
 
-          <div className="bg-muted rounded-xl p-8 md:p-12 text-center space-y-4">
+          {/* <div className="bg-muted rounded-xl p-8 md:p-12 text-center space-y-4">
             <h2 className="text-3xl font-bold">Have items to share?</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Turn your unused items into income. List them on Reloji and start earning today.
             </p>
-            <Button size="lg" className="gap-2" data-testid="button-start-listing" asChild>
-              <Link href="/listings/new">
-                Start Listing
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button size="lg" className="gap-2" data-testid="button-start-listing" onClick={handleStartListing}>
+              Start Listing
+              <ArrowRight className="h-4 w-4" />
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

@@ -3,10 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin, Shield, Calendar, Star, MessageCircle, Info } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Info, ShieldCheck, CalendarClock, Star, Tag } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function ListingPage() {
@@ -17,8 +20,11 @@ export default function ListingPage() {
   const [error, setError] = useState<string | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  const [hasExistingBooking, setHasExistingBooking] = useState(false);
+  
+  // Check if current user is the owner
+  const isOwner = session?.user?.id && listing?.ownerId === session.user.id;
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -42,17 +48,21 @@ export default function ListingPage() {
     }
   }, [slug]);
 
-  // Inject Razorpay script when needed (browser only)
+  // Check for existing booking
   useEffect(() => {
-    const existing = document.getElementById('rzp-checkout-js');
-    if (!existing) {
-      const script = document.createElement('script');
-      script.id = 'rzp-checkout-js';
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      document.body.appendChild(script);
+    if (slug && session?.user?.id) {
+      fetch(`/api/bookings/check?listingSlug=${slug}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.hasBooking) {
+            setHasExistingBooking(true);
+          }
+        })
+        .catch(console.error);
     }
-  }, []);
+  }, [slug, session]);
+
+  // Payment integration removed: no external SDK required.
 
   const handleBookingRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +73,7 @@ export default function ListingPage() {
     setIsBooking(true);
     setBookingError(null);
     setBookingSuccess(false);
-    setPaymentSuccess(false);
+    
 
     try {
       const response = await fetch('/api/bookings', {
@@ -77,62 +87,8 @@ export default function ListingPage() {
         throw new Error(data.message || 'Failed to create booking');
       }
 
-      const booking = await response.json();
+      await response.json();
       setBookingSuccess(true);
-
-      // Create Razorpay order for this booking
-      const orderRes = await fetch('/api/payments/razorpay/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id }),
-      });
-      if (!orderRes.ok) {
-        const err = await orderRes.text();
-        throw new Error(err || 'Failed to create payment order');
-      }
-      const order = await orderRes.json();
-
-      // @ts-ignore - Razorpay is injected globally
-      const RazorpayCheckout = (window as any).Razorpay;
-      if (!RazorpayCheckout) {
-        throw new Error('Payment SDK not loaded');
-      }
-
-      const rzp = new RazorpayCheckout({
-        key: order.key,
-        amount: order.amount,
-        currency: order.currency,
-        name: 'Reloji',
-        description: order.listingTitle,
-        order_id: order.orderId,
-        handler: async (resp: any) => {
-          try {
-            const verifyRes = await fetch('/api/payments/razorpay/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: resp.razorpay_order_id,
-                razorpay_payment_id: resp.razorpay_payment_id,
-                razorpay_signature: resp.razorpay_signature,
-                bookingId: booking.id,
-              }),
-            });
-            if (!verifyRes.ok) {
-              const t = await verifyRes.text();
-              throw new Error(t || 'Payment verification failed');
-            }
-            setPaymentSuccess(true);
-          } catch (verErr: any) {
-            setBookingError(verErr.message);
-          }
-        },
-        prefill: {
-          name: session?.user?.name || '',
-          email: session?.user?.email || '',
-        },
-        theme: { color: '#6d28d9' },
-      });
-      rzp.open();
     } catch (err: any) {
       setBookingError(err.message);
     } finally {
@@ -145,94 +101,303 @@ export default function ListingPage() {
   if (!listing) return <div className="text-center py-12">Listing not found.</div>;
 
   return (
-    <div className="container mx-auto py-12 px-4">
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
-          <h1 className="text-4xl font-bold mb-4">{listing.title}</h1>
-          <div className="mb-8">
-            <img src={listing.images[0]?.url || '/placeholder.svg'} alt={listing.title} className="w-full h-auto rounded-lg shadow-lg" />
-          </div>
-          <h2 className="text-2xl font-bold mt-8 mb-4">About this listing</h2>
-          <p className="text-gray-600 whitespace-pre-line">{listing.description}</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-6 text-sm">
-            {listing.condition &&
-              <div className="flex items-start">
-                <Tag className="h-5 w-5 text-primary mr-3"/>
-                <div>
-                  <h4 className="font-semibold">Condition</h4>
-                  <p className="text-gray-600 capitalize">{listing.condition.replace('_', ' ').toLowerCase()}</p>
-                </div>
-              </div>
-            }
-            {listing.rating > 0 &&
-              <div className="flex items-start">
-                <Star className="h-5 w-5 text-primary mr-3"/>
-                <div>
-                  <h4 className="font-semibold">Rating</h4>
-                  <p className="text-gray-600">{listing.rating.toFixed(1)} / 5.0</p>
-                </div>
-              </div>
-            }
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-6 text-sm">
-            {listing.rules && 
-              <div className="flex items-start">
-                <Info className="h-5 w-5 text-primary mr-3"/>
-                <div>
-                  <h4 className="font-semibold">Rental Rules</h4>
-                  <p className="text-gray-600 whitespace-pre-line">{listing.rules}</p>
-                </div>
-              </div>
-            }
-            {listing.cancellationPolicy && 
-              <div className="flex items-start">
-                <ShieldCheck className="h-5 w-5 text-primary mr-3"/>
-                <div>
-                  <h4 className="font-semibold">Cancellation Policy</h4>
-                  <p className="text-gray-600 whitespace-pre-line">{listing.cancellationPolicy}</p>
-                </div>
-              </div>
-            }
-            {listing.maxBorrowDuration && 
-              <div className="flex items-start">
-                <CalendarClock className="h-5 w-5 text-primary mr-3"/>
-                <div>
-                  <h4 className="font-semibold">Max Duration</h4>
-                  <p className="text-gray-600">{listing.maxBorrowDuration} days</p>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-
-        <div className="md:col-span-1">
-          <div className="sticky top-24 p-6 border rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold mb-4">₹{listing.pricePerDay} <span className="text-base font-normal text-muted-foreground">/ day</span></h2>
-            
-            <form onSubmit={handleBookingRequest} className="space-y-4">
-              {bookingError && <Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{bookingError}</AlertDescription></Alert>}
-              {bookingSuccess && !paymentSuccess && <Alert variant="default"><AlertTitle>Booking Created</AlertTitle><AlertDescription>Proceeding to payment...</AlertDescription></Alert>}
-              {paymentSuccess && <Alert variant="default"><AlertTitle>Payment Successful</AlertTitle><AlertDescription>Your booking is confirmed.</AlertDescription></Alert>}
-
-              <div>
-                <label htmlFor="start-date" className="block text-sm font-medium">Start Date</label>
-                <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-              </div>
-              <div>
-                <label htmlFor="end-date" className="block text-sm font-medium">End Date</label>
-                <input type="date" id="end-date" value={endDate} onChange={e => setEndDate(e.target.value)} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-              </div>
-              <button type="submit" disabled={isBooking || sessionStatus !== 'authenticated'} className="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-semibold flex items-center justify-center">
-                {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
-                {sessionStatus !== 'authenticated' ? 'Sign in to book' : 'Request to Book'}
-              </button>
-            </form>
-            
-            <div className="mt-6 text-sm text-center text-muted-foreground">
-              You won't be charged yet
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 md:px-8 py-8">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Main Content - Left Side */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Main Image */}
+            <div className="aspect-[3/2] rounded-xl overflow-hidden">
+              <img
+                src={listing.images[0]?.url || '/placeholder.svg'}
+                alt={listing.title}
+                className="w-full h-full object-cover"
+              />
             </div>
+
+            {/* Thumbnail Gallery */}
+            {listing.images.length > 1 && (
+              <div className="grid grid-cols-4 gap-2">
+                {listing.images.slice(1, 5).map((img: any, idx: number) => (
+                  <div key={idx} className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity">
+                    <img
+                      src={img.url}
+                      alt={`View ${idx + 2}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Title and Info Section */}
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-start justify-between gap-4 mb-2">
+                  <div>
+                    <h1 className="text-3xl font-bold mb-2">{listing.title}</h1>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        <span>{listing.location?.city || 'Location not set'}</span>
+                      </div>
+                      {listing.rating > 0 && (
+                        <>
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="font-semibold">{listing.rating.toFixed(1)}</span>
+                          </div>
+                          <span>(24 reviews)</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {listing.category && (
+                    <Badge variant="secondary">{listing.category.name}</Badge>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Owner Card */}
+              {listing.owner && (
+                <Card className="p-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={listing.owner.image} alt={listing.owner.name} />
+                      <AvatarFallback>{listing.owner.name?.[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{listing.owner.name}</h3>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>Response rate: 98%</span>
+                        <span>•</span>
+                        <span>Member since {new Date(listing.owner.createdAt).getFullYear()}</span>
+                      </div>
+                    </div>
+                    <Button variant="outline">
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Message
+                    </Button>
+                  </div>
+                </Card>
+              )}
+              {/* Tabs for Description, Reviews, Location */}
+              <Tabs defaultValue="description" className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="description">Description</TabsTrigger>
+                  <TabsTrigger value="reviews">Reviews</TabsTrigger>
+                  <TabsTrigger value="location">Location</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="description" className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">About this item</h3>
+                    <p className="text-muted-foreground whitespace-pre-line">
+                      {listing.description}
+                    </p>
+                  </div>
+
+                  {listing.condition && (
+                    <div>
+                      <h3 className="font-semibold mb-2">Condition</h3>
+                      <p className="text-muted-foreground capitalize">
+                        {listing.condition.replace('_', ' ').toLowerCase()}
+                      </p>
+                    </div>
+                  )}
+
+                  {listing.rules && (
+                    <div>
+                      <h3 className="font-semibold mb-2">Rental rules</h3>
+                      <p className="text-muted-foreground whitespace-pre-line text-sm">
+                        {listing.rules}
+                      </p>
+                    </div>
+                  )}
+
+                  {listing.cancellationPolicy && (
+                    <div>
+                      <h3 className="font-semibold mb-2">Cancellation Policy</h3>
+                      <p className="text-muted-foreground whitespace-pre-line text-sm">
+                        {listing.cancellationPolicy}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-3 p-4 bg-muted rounded-lg">
+                    <Shield className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium">Protected by Reloji</p>
+                      <p className="text-muted-foreground">
+                        All rentals are covered by our protection plan. Your deposit is held securely and refunded after safe return.
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="reviews" className="space-y-4">
+                  {listing.rating > 0 ? (
+                    <div className="flex items-center gap-6 p-4 bg-muted rounded-lg">
+                      <div className="text-center">
+                        <div className="text-4xl font-bold">{listing.rating.toFixed(1)}</div>
+                        <div className="flex items-center justify-center gap-1 my-1">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        </div>
+                        <div className="text-sm text-muted-foreground">Based on reviews</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No reviews yet</p>
+                    </div>
+                  )}
+                  
+                  {listing.reviews && listing.reviews.length > 0 && (
+                    <div className="space-y-4">
+                      {listing.reviews.map((review: any, i: number) => (
+                        <Card key={i} className="p-4">
+                          <div className="flex items-start gap-3">
+                            <Avatar>
+                              <AvatarImage src={review.reviewer?.image} />
+                              <AvatarFallback>{review.reviewer?.name?.[0]}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold">{review.reviewer?.name}</span>
+                                <div className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                  <span className="text-sm">{review.rating}</span>
+                                </div>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{review.comment}</p>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="location">
+                  {listing.location?.coords?.lat && listing.location?.coords?.lng ? (
+                    <div className="space-y-3">
+                      <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                        {(() => {
+                          const lat = listing.location.coords.lat as number;
+                          const lng = listing.location.coords.lng as number;
+                          const delta = 0.01;
+                          const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join('%2C');
+                          const marker = `${lat}%2C${lng}`;
+                          const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
+                          return <iframe title="map" className="w-full h-full" src={src} />;
+                        })()}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{listing.location?.city}</p>
+                    </div>
+                  ) : (
+                    <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+                      <div className="text-center text-muted-foreground">
+                        <MapPin className="h-12 w-12 mx-auto mb-2" />
+                        <p>Map view unavailable</p>
+                        <p className="text-sm">{listing.location?.city || 'Location not specified'}</p>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+
+          {/* Booking Sidebar - Right Side */}
+          <div className="lg:col-span-1">
+            <Card className="p-6 space-y-6 sticky top-24">
+              {/* Price */}
+              <div>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-3xl font-bold text-primary">₹{listing.pricePerDay}</span>
+                  <span className="text-muted-foreground">/ day</span>
+                </div>
+                {listing.depositAmount && (
+                  <p className="text-sm text-muted-foreground">+ ₹{listing.depositAmount} deposit</p>
+                )}
+              </div>
+
+              {/* Booking Form or Owner Message */}
+              {isOwner ? (
+                <Alert className="bg-blue-50 border-blue-200">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertTitle className="text-blue-800">This is your listing</AlertTitle>
+                  <AlertDescription className="text-blue-700">
+                    You cannot book your own item.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  {bookingError && (
+                    <Alert variant="destructive">
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>{bookingError}</AlertDescription>
+                    </Alert>
+                  )}
+                  {bookingSuccess && (
+                    <Alert className="bg-green-50 border-green-200">
+                      <AlertTitle className="text-green-800">Booking Created</AlertTitle>
+                      <AlertDescription className="text-green-700">Your request has been submitted.</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {hasExistingBooking ? (
+                    <Alert>
+                      <Info className="h-4 w-4" />
+                      <AlertTitle>Already Booked</AlertTitle>
+                      <AlertDescription>
+                        You already have an active or pending booking for this item.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                  <form onSubmit={handleBookingRequest} className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Rental period</label>
+                      <div className="space-y-2">
+                        <input 
+                          type="date" 
+                          value={startDate} 
+                          onChange={e => setStartDate(e.target.value)} 
+                          required 
+                          className="w-full px-3 py-2 rounded-md border border-input bg-background" 
+                          placeholder="Start date"
+                        />
+                        <input 
+                          type="date" 
+                          value={endDate} 
+                          onChange={e => setEndDate(e.target.value)} 
+                          required 
+                          className="w-full px-3 py-2 rounded-md border border-input bg-background" 
+                          placeholder="End date"
+                        />
+                      </div>
+                    </div>
+
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      size="lg"
+                      disabled={isBooking || sessionStatus !== 'authenticated'}
+                    >
+                      {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {sessionStatus !== 'authenticated' ? 'Sign in to book' : 'Request to Borrow'}
+                    </Button>
+                  </form>
+                  )}
+                </>
+              )}
+
+              <p className="text-xs text-center text-muted-foreground">
+                You won't be charged until the owner approves your request
+              </p>
+            </Card>
           </div>
         </div>
       </div>

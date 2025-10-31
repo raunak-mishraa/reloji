@@ -9,8 +9,9 @@ import { pusherServer } from '@/lib/pusher';
 
 export async function GET(
   req: Request,
-  { params }: { params: { conversationId: string } }
+  { params: rawParams }: { params: { conversationId: string } }
 ) {
+  const params = await rawParams;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return new NextResponse('Unauthorized', { status: 401 });
@@ -49,8 +50,9 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  { params }: { params: { conversationId: string } }
+  { params: rawParams }: { params: { conversationId: string } }
 ) {
+  const params = await rawParams;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return new NextResponse('Unauthorized', { status: 401 });
@@ -62,53 +64,49 @@ export async function POST(
       return new NextResponse('Missing content', { status: 400 });
     }
 
-    const message = await prisma.$transaction(async (tx) => {
-      const newMessage = await tx.message.create({
-        data: {
-          conversationId: params.conversationId,
-          senderId: session.user.id,
-          content,
-        },
-        include: {
-          sender: true,
-          conversation: {
-            include: {
-              participants: true,
-            },
+    const newMessage = await prisma.message.create({
+      data: {
+        conversationId: params.conversationId,
+        senderId: session.user.id,
+        content,
+      },
+      include: {
+        sender: true,
+        conversation: {
+          include: {
+            participants: true,
           },
+        },
+      },
+    });
+
+    const recipient = newMessage.conversation.participants.find(p => p.id !== session.user.id);
+    if (recipient && recipient.email) {
+      const emailHtml = render(NewMessageEmail({ 
+        senderName: newMessage.sender.name || 'A user',
+        messageContent: newMessage.content,
+        conversationUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/messages/${newMessage.conversationId}`
+      }));
+
+      await sendEmail({
+        to: recipient.email,
+        subject: `New message from ${newMessage.sender.name}`,
+        html: emailHtml,
+      });
+
+      await pusherServer.trigger(newMessage.conversationId, 'messages:new', newMessage);
+
+      await prisma.notification.create({
+        data: {
+          userId: recipient.id,
+          message: `You have a new message from ${newMessage.sender.name}`,
         },
       });
 
-      const recipient = newMessage.conversation.participants.find(p => p.id !== session.user.id);
-      if (recipient && recipient.email) {
-        const emailHtml = render(NewMessageEmail({ 
-          senderName: newMessage.sender.name || 'A user',
-          messageContent: newMessage.content,
-          conversationUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/messages/${newMessage.conversationId}`
-        }));
+      await pusherServer.trigger(recipient.id, 'notifications:new', {});
+    }
 
-        await sendEmail({
-          to: recipient.email,
-          subject: `New message from ${newMessage.sender.name}`,
-          html: emailHtml,
-        });
-
-        await pusherServer.trigger(newMessage.conversationId, 'messages:new', newMessage);
-
-        await tx.notification.create({
-          data: {
-            userId: recipient.id,
-            message: `You have a new message from ${newMessage.sender.name}`,
-          },
-        });
-
-        await pusherServer.trigger(recipient.id, 'notifications:new', {});
-      }
-
-      return newMessage;
-    });
-
-    return NextResponse.json(message, { status: 201 });
+    return NextResponse.json(newMessage, { status: 201 });
   } catch (error) {
     console.error(`Error sending message to conversation ${params.conversationId}:`, error);
     return new NextResponse('Internal Server Error', { status: 500 });

@@ -25,15 +25,17 @@ export default function MessagesPage() {
         {conversations.map((convo: any) => (
           <Link href={`/messages/${convo.id}`} key={convo.id} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted">
             <Avatar>
-              <AvatarImage src={convo.participants[0].image} />
-              <AvatarFallback>{convo.participants[0].name[0]}</AvatarFallback>
+              <AvatarImage src={convo.participants?.[0]?.image} />
+              <AvatarFallback>{convo.participants?.[0]?.name?.[0] || 'U'}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <div className="flex justify-between">
-                <h3 className="font-semibold">{convo.participants[0].name}</h3>
-                <p className="text-xs text-muted-foreground">{new Date(convo.messages[0].createdAt).toLocaleTimeString()}</p>
+                <h3 className="font-semibold">{convo.participants?.[0]?.name || 'User'}</h3>
+                {convo.messages?.[0]?.createdAt && (
+                  <p className="text-xs text-muted-foreground">{new Date(convo.messages[0].createdAt).toLocaleTimeString()}</p>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground truncate">{convo.messages[0].content}</p>
+              <p className="text-sm text-muted-foreground truncate">{convo.messages?.[0]?.content || 'No messages yet'}</p>
             </div>
           </Link>
         ))}

@@ -27,9 +27,11 @@ const formSchema = z.object({
   cancellationPolicy: z.string(),
   maxBorrowDuration: z.coerce.number(),
   condition: z.nativeEnum(ItemCondition),
+  circleId: z.string().optional(),
 });
 
 type Category = { id: string; name: string };
+type Circle = { id: string; name: string };
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -37,8 +39,11 @@ export default function NewListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [circles, setCircles] = useState<Circle[]>([]);
   const router = useRouter();
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const form = useForm<any>({
     resolver: zodResolver(formSchema) as any,
@@ -53,6 +58,7 @@ export default function NewListingPage() {
       cancellationPolicy: 'Full refund if cancelled 48 hours in advance.',
       maxBorrowDuration: 7,
       condition: ItemCondition.GOOD,
+      circleId: '',
     },
   });
 
@@ -60,38 +66,96 @@ export default function NewListingPage() {
     fetch('/api/categories')
       .then((res) => res.json())
       .then(setCategories);
+
+    fetch('/api/user/circles')
+      .then(res => res.json())
+      .then(setCircles);
   }, []);
+
+  useEffect(() => {
+    if (!navigator?.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setCoords({ lat: latitude, lng: longitude });
+        try {
+          const res = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const city = data.city || data.locality || data.principalSubdivision || '';
+            const country = data.countryName || '';
+            const label = [city, country].filter(Boolean).join(', ');
+            if (label) {
+              form.setValue('location', label as any, { shouldValidate: true });
+            }
+          }
+        } catch (e) {
+          // ignore reverse geocode errors
+        }
+      },
+      () => {
+        // user denied or error, keep manual input
+      }
+    );
+  }, []);
+
+  const useCurrentLocation = () => {
+    if (!navigator?.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setCoords({ lat: latitude, lng: longitude });
+        try {
+          const res = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const city = data.city || data.locality || data.principalSubdivision || '';
+            const country = data.countryName || '';
+            const label = [city, country].filter(Boolean).join(', ');
+            if (label) {
+              form.setValue('location', label as any, { shouldValidate: true });
+            }
+          }
+        } catch {}
+      },
+      () => {}
+    );
+  };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', 'reloji');
 
-    const presignResponse = await fetch('/api/uploads/presign', {
+    const uploadResponse = await fetch('/api/uploads/cloudinary', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: file.name, contentType: file.type }),
-    });
-
-    if (!presignResponse.ok) {
-      toast({ title: "Error", description: "Failed to get upload URL.", variant: "destructive" });
-      return;
-    }
-
-    const { url, key } = await presignResponse.json();
-
-    const uploadResponse = await fetch(url, {
-      method: 'PUT',
-      body: file,
-      headers: { 'Content-Type': file.type },
+      body: formData,
     });
 
     if (!uploadResponse.ok) {
-      toast({ title: "Error", description: "Failed to upload image.", variant: "destructive" });
+      let msg = 'Failed to upload image.';
+      try { msg = await uploadResponse.text(); } catch {}
+      toast({ title: 'Upload error', description: msg || 'Server returned an error.', variant: 'destructive' });
+      setIsUploading(false);
       return;
     }
 
-    const imageUrl = `https://${process.env.NEXT_PUBLIC_AWS_S3_BUCKET_NAME}.s3.amazonaws.com/${key}`;
+    const data = await uploadResponse.json();
+    const imageUrl = (data.url as string) || (data.secure_url as string);
+    if (!imageUrl) {
+      toast({ title: 'Error', description: 'Upload response missing image URL.', variant: 'destructive' });
+      setIsUploading(false);
+      return;
+    }
     setImageUrls((prev) => [...prev, imageUrl]);
+    setIsUploading(false);
   };
 
   async function onSubmit(values: FormValues) {
@@ -105,11 +169,20 @@ export default function NewListingPage() {
       const response = await fetch('/api/listings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...values, imageUrls, location: { city: values.location } }),
+        body: JSON.stringify({
+          ...values,
+          imageUrls,
+          location: {
+            city: values.location,
+            coords: coords ? { lat: coords.lat, lng: coords.lng } : undefined,
+          },
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create listing');
+        let errText = 'Failed to create listing';
+        try { errText = await response.text(); } catch {}
+        throw new Error(errText);
       }
 
       const newListing = await response.json();
@@ -131,13 +204,13 @@ export default function NewListingPage() {
       {/* Background Pattern */}
       <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] dark:bg-[radial-gradient(#374151_1px,transparent_1px)]" />
       
-      <div className="container mx-auto max-w-4xl py-12 px-4">
+      <div className="container mx-auto max-w-4xl py-12 px-4 md:px-8">
         {/* Header */}
         <div className="mb-12 text-center">
-          <h1 className="text-4xl font-bold tracking-tight mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <h1 className="text-2xl md:text-4xl font-bold tracking-tight mb-2 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
             Create a New Listing
           </h1>
-          <p className="text-muted-foreground">Share your item with the community and start earning</p>
+          <p className="text-sm md:text-base text-muted-foreground">Share your item with the community and start earning</p>
         </div>
 
         <Form {...form}>
@@ -145,7 +218,7 @@ export default function NewListingPage() {
             {/* Basic Information Card */}
             <Card className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Basic Information</CardTitle>
                 <CardDescription>Tell us about your item</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -206,7 +279,10 @@ export default function NewListingPage() {
                       <FormItem>
                         <FormLabel>Location *</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., San Francisco, CA" {...field} className="h-11" />
+                          <div className="flex gap-2">
+                            <Input placeholder="e.g., San Francisco, CA" {...field} className="h-11" />
+                            <Button type="button" variant="outline" onClick={useCurrentLocation} className="whitespace-nowrap">Use current</Button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -216,10 +292,46 @@ export default function NewListingPage() {
               </CardContent>
             </Card>
 
+            {/* Circle Selection Card */}
+            {circles.length > 0 && (
+              <Card className="border-2 hover:border-primary/50 transition-colors">
+                <CardHeader>
+                  <CardTitle className="text-lg md:text-xl">Share in a Circle</CardTitle>
+                  <CardDescription>Optionally, share this item within one of your circles.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="circleId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Circle</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Select a circle (optional)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {circles.map((circle) => (
+                              <SelectItem key={circle.id} value={circle.id}>
+                                {circle.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {/* Pricing Card */}
             <Card className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
-                <CardTitle>Pricing</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Pricing</CardTitle>
                 <CardDescription>Set your rates and deposit</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -263,7 +375,7 @@ export default function NewListingPage() {
             {/* Details Card */}
             <Card className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
-                <CardTitle>Rental Details</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Rental Details</CardTitle>
                 <CardDescription>Define your rental terms and conditions</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -314,16 +426,24 @@ export default function NewListingPage() {
             {/* Images Card */}
             <Card className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
-                <CardTitle>Images</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Images</CardTitle>
                 <CardDescription>Upload clear photos of your item *</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-                  <label htmlFor="image-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                <div className="relative border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
+                  {/* Overlay while uploading */}
+                  {isUploading && (
+                    <div className="absolute inset-0 z-10 rounded-lg bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin" /> Uploading...
+                      </div>
+                    </div>
+                  )}
+                  <label htmlFor="image-upload" className={`cursor-pointer flex flex-col items-center gap-2 ${isUploading ? 'pointer-events-none opacity-60' : ''}`}>
                     <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                       <Upload className="w-8 h-8 text-primary" />
                     </div>
-                    <p className="text-sm font-medium">Click to upload images</p>
+                    <p className="text-sm font-medium">{isUploading ? 'Uploading...' : 'Click to upload images'}</p>
                     <p className="text-xs text-muted-foreground">PNG, JPG or WEBP (max. 5MB)</p>
                   </label>
                   <Input
@@ -332,6 +452,7 @@ export default function NewListingPage() {
                     accept="image/*"
                     onChange={handleImageUpload}
                     className="hidden"
+                    disabled={isUploading}
                   />
                 </div>
 

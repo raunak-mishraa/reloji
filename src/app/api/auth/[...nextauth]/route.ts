@@ -62,6 +62,8 @@ export const authOptions: AuthOptions = {
         session.user.name = token.name;
         session.user.email = token.email;
         session.user.image = token.picture;
+        session.user.phone = token.phone ?? null;
+        session.user.role = token.role;
       }
       return session;
     },
@@ -71,6 +73,16 @@ export const authOptions: AuthOptions = {
         token.name = user.name;
         token.email = user.email;
         token.picture = user.image;
+        token.role = user.role;
+        // Phone is stored on Profile
+        const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
+        token.phone = profile?.phone ?? null;
+      } else if (token?.id) {
+        // Ensure phone and role are present on subsequent requests
+        const dbUser = await prisma.user.findUnique({ where: { id: token.id }, select: { role: true } });
+        const profile = await prisma.profile.findUnique({ where: { userId: token.id } });
+        token.phone = profile?.phone ?? null;
+        token.role = dbUser?.role ?? token.role;
       }
       return token;
     },

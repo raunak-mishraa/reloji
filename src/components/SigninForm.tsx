@@ -11,7 +11,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthCard, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/auth-card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
@@ -55,7 +55,7 @@ export default function SigninForm() {
   }
 
   return (
-    <Card>
+    <AuthCard>
       <CardHeader className="text-center">
         <CardTitle>Sign in to your account</CardTitle>
         <CardDescription>
@@ -163,6 +163,6 @@ export default function SigninForm() {
           </Link>
         </p>
       </CardFooter>
-    </Card>
+    </AuthCard>
   );
 }

@@ -1,11 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import Razorpay from "razorpay";
 import { Role } from "@prisma/client";
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return new NextResponse("Unauthorized", { status: 401 });
 
@@ -13,10 +14,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!admin || admin.role !== Role.ADMIN) return new NextResponse("Unauthorized", { status: 401 });
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const body = await request.json().catch(() => ({}));
     const { amount, reason } = body as { amount?: number; reason?: string };
 
-    const booking = await prisma.booking.findUnique({ where: { id: params.id }, include: { listing: true } });
+    const booking = await prisma.booking.findUnique({ where: { id }, include: { listing: true } });
     if (!booking) return new NextResponse("Booking not found", { status: 404 });
 
     const key_id = process.env.RAZORPAY_KEY_ID as string;
@@ -65,7 +66,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       payment_id: paymentId,
     });
   } catch (e) {
-    console.error(`Error refunding booking ${params.id}:`, e);
+    console.error(`Error refunding booking ${id}:`, e);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

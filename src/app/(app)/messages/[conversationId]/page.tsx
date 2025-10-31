@@ -90,8 +90,10 @@ export default function ConversationPage() {
           <div key={msg.id} className={`flex items-end gap-2 ${msg.senderId === session?.user?.id ? 'justify-end' : ''}`}>
             {msg.senderId !== session?.user?.id && (
               <Avatar className="h-8 w-8">
-                <AvatarImage src={msg.sender.image} />
-                <AvatarFallback>{msg.sender.name[0]}</AvatarFallback>
+                <AvatarImage src={msg?.sender?.image ?? '/default-avatar.png'} />
+                <AvatarFallback>
+                  {msg?.sender?.name?.charAt(0).toUpperCase() ?? "?"}
+                </AvatarFallback>
               </Avatar>
             )}
             <div className={`max-w-xs p-3 rounded-lg ${msg.senderId === session?.user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>

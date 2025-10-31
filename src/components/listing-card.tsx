@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
 interface ListingCardProps {
-  id: string
+  id: string;
+  slug: string;
   title: string
   category: string
   pricePerDay: number
@@ -17,6 +18,7 @@ interface ListingCardProps {
 }
 
 export function ListingCard({
+  slug,
   title,
   category,
   pricePerDay,

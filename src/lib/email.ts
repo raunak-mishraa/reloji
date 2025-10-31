@@ -13,7 +13,7 @@ export async function sendEmail({
 }) {
   try {
     await resend.emails.send({
-      from: 'Reloji <noreply@yourdomain.com>', // Replace with your domain
+      from: 'Reloji <noreply@raunak.tech>', // Replace with your domain
       to,
       subject,
       html,
