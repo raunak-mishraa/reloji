@@ -26,9 +26,9 @@ export function ListingCard({
   image,
   rating,
   reviewCount,
-  isFavorited = false,
+  // isFavorited = false,
 }: ListingCardProps) {
-  const [favorited, setFavorited] = useState(isFavorited)
+  // const [favorited, setFavorited] = useState(isFavorited)
 
   return (
     <Card className="overflow-hidden border hover-elevate active-elevate-2 transition-shadow cursor-pointer" data-testid="card-listing">
@@ -38,7 +38,7 @@ export function ListingCard({
           alt={title}
           className="w-full h-full object-cover transition-transform hover:scale-105"
         />
-        <Button
+        {/* <Button
           size="icon"
           variant="ghost"
           className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background"
@@ -50,7 +50,7 @@ export function ListingCard({
           data-testid="button-favorite"
         >
           <Heart className={`h-4 w-4 ${favorited ? "fill-primary text-primary" : ""}`} />
-        </Button>
+        </Button> */}
       </div>
       <div className="p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">

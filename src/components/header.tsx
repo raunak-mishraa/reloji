@@ -117,37 +117,41 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 md:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 hover-elevate active-elevate-2 px-3 py-2 rounded-lg -ml-3" data-testid="link-home">
-            <Image src="/assets/images/logo.png" alt="Logo" width={32} height={32} className="h-9 w-fit" />
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90 shadow-sm">
+      <div className="container mx-auto px-4 md:px-6 lg:px-8">
+        <div className="flex h-14 md:h-16 items-center justify-between gap-3 md:gap-6">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0" data-testid="link-home">
+            <Image src="/assets/images/logo.png" alt="Logo" width={32} height={32} className="h-7 md:h-9 w-fit" />
           </Link>
 
-          <div className="hidden md:block flex-1 max-w-2xl">
+          <div className="hidden md:block flex-1 max-w-2xl lg:max-w-3xl">
             <SearchBar />
           </div>
 
-          <div className="hidden md:flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
+          <div className="hidden md:flex items-center gap-2 lg:gap-3 shrink-0">
+            <Button variant="ghost" size="sm" className="font-medium hidden lg:flex" asChild>
               <Link href="/circles">Circles</Link>
             </Button>
             {isAuthenticated && (
-              <Button variant="default" size="sm" onClick={handleStartListing}>
-                Start Listing
+              <Button variant="default" size="sm" className="font-medium" onClick={handleStartListing}>
+                <span className="hidden lg:inline">Start Listing</span>
+                <span className="lg:hidden">List Item</span>
               </Button>
             )}
-            <ThemeToggle />
-            {isAuthenticated && <Notifications />}
+            <div className="flex items-center gap-1.5 lg:gap-2 ml-1 lg:ml-2">
+              <ThemeToggle />
+              {isAuthenticated && <Notifications />}
+            </div>
 
             {isLoading ? null : (
               isAuthenticated ? (
                 <UserNav />
               ) : (
-                <>
+                <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="font-medium"
                     data-testid="button-login"
                     asChild
                   >
@@ -156,12 +160,13 @@ export function Header() {
                   <Button
                     variant="default"
                     size="sm"
+                    className="font-medium"
                     data-testid="button-signup"
                     asChild
                   >
                     <Link href="/signup">Sign up</Link>
                   </Button>
-                </>
+                </div>
               )
             )}
           </div>
@@ -173,37 +178,50 @@ export function Header() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[300px]">
-              <div className="p-4 flex flex-col h-full mt-8">
-                <div className="flex-1 space-y-4">
-                  {isAuthenticated && (
-                    <Button variant="default" size="sm" className="w-full" onClick={() => { handleStartListing(); setOpen(false); }}>
-                      Start Listing
-                    </Button>
-                  )}
+            <SheetContent side="right" className="w-[280px] p-0">
+              <div className="flex flex-col h-full">
+                <div className="flex-1 overflow-y-auto">
+                  <div className="pt-16 px-6 pb-6 space-y-4">
+                    {isAuthenticated && (
+                      <Button variant="default" size="default" className="w-full" onClick={() => { handleStartListing(); setOpen(false); }}>
+                        Start Listing
+                      </Button>
+                    )}
 
-                  {isLoading ? null : isAuthenticated ? (
-                    <div className="space-y-2">
-                      <SheetClose asChild><Link href="/profile" className="block p-2 rounded-md hover:bg-muted">Profile</Link></SheetClose>
-                      <SheetClose asChild><Link href="/dashboard" className="block p-2 rounded-md hover:bg-muted">Dashboard</Link></SheetClose>
-                      <SheetClose asChild><Link href="/my-listings" className="block p-2 rounded-md hover:bg-muted">My Listings</Link></SheetClose>
-                      <SheetClose asChild><Link href="/incoming-requests" className="block p-2 rounded-md hover:bg-muted">Incoming Requests</Link></SheetClose>
-                      <SheetClose asChild><Link href="/my-requests" className="block p-2 rounded-md hover:bg-muted">My Requests</Link></SheetClose>
-                      <SheetClose asChild><Link href="/messages" className="block p-2 rounded-md hover:bg-muted">Messages</Link></SheetClose>
-                      <SheetClose asChild><Link href="/circles" className="block p-2 rounded-md hover:bg-muted">Circles</Link></SheetClose>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <SheetClose asChild><Link href="/api/auth/signin" className="block p-2 rounded-md hover:bg-muted">Log in</Link></SheetClose>
-                      <SheetClose asChild><Link href="/api/auth/signin" className="block p-2 rounded-md hover:bg-muted">Sign up</Link></SheetClose>
-                    </div>
-                  )}
+                    {isLoading ? null : isAuthenticated ? (
+                      <div className="space-y-1">
+                        <SheetClose asChild><Link href="/profile" className="block px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm">Profile</Link></SheetClose>
+                        <SheetClose asChild><Link href="/dashboard" className="block px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm">Dashboard</Link></SheetClose>
+                        <SheetClose asChild><Link href="/my-listings" className="block px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm">My Listings</Link></SheetClose>
+                        <SheetClose asChild><Link href="/incoming-requests" className="block px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm">Incoming Requests</Link></SheetClose>
+                        <SheetClose asChild><Link href="/my-requests" className="block px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm">My Requests</Link></SheetClose>
+                        <SheetClose asChild><Link href="/messages" className="block px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm">Messages</Link></SheetClose>
+                        <SheetClose asChild><Link href="/circles" className="block px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm">Circles</Link></SheetClose>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <SheetClose asChild>
+                          <Button variant="outline" className="w-full" asChild>
+                            <Link href="/api/auth/signin">Log in</Link>
+                          </Button>
+                        </SheetClose>
+                        <SheetClose asChild>
+                          <Button variant="default" className="w-full" asChild>
+                            <Link href="/signup">Sign up</Link>
+                          </Button>
+                        </SheetClose>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="mt-auto space-y-2">
-                  <ThemeToggle />
+                <div className="p-6 pt-4 border-t space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Theme</span>
+                    <ThemeToggle />
+                  </div>
                   {isAuthenticated && (
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => { signOut(); setOpen(false); }}>
+                    <Button variant="ghost" className="w-full justify-start text-sm" onClick={() => { signOut(); setOpen(false); }}>
                       <LogOut className="mr-2 h-4 w-4" />
                       Log out
                     </Button>
@@ -214,7 +232,7 @@ export function Header() {
           </Sheet>
         </div>
 
-        <div className="md:hidden pb-4">
+        <div className="md:hidden pb-3 pt-2">
           <SearchBar />
         </div>
         <PhoneVerificationModal open={showPhoneModal} onOpenChange={setShowPhoneModal} />

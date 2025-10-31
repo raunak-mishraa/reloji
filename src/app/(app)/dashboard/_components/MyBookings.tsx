@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from 'lucide-react';
+import { Card } from "@/components/ui/card";
+import { Loader2, Calendar, DollarSign, MessageSquare, Star, User, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   AlertDialog,
@@ -119,65 +120,182 @@ export default function MyBookings() {
     }
   };
 
-  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  if (isLoading) return (
+    <div className="flex justify-center items-center py-16">
+      <Loader2 className="h-8 w-8 animate-spin text-[#0f8c27]" />
+    </div>
+  );
+  
+  if (error) return (
+    <Card className="p-6 border-destructive/50 bg-destructive/5">
+      <p className="text-destructive text-center">Error: {error}</p>
+    </Card>
+  );
+
+  if (bookings.length === 0) {
+    return (
+      <Card className="p-8 md:p-12 text-center border-dashed">
+        <Package className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4 text-muted-foreground" />
+        <h3 className="text-lg md:text-xl font-semibold mb-2">No bookings yet</h3>
+        <p className="text-sm md:text-base text-muted-foreground">Your booking requests will appear here</p>
+      </Card>
+    );
+  }
 
   return (
     <>
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Listing</TableHead>
-          <TableHead>Borrower</TableHead>
-          <TableHead>Dates</TableHead>
-          <TableHead>Total</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {bookings.map(booking => (
-          <TableRow key={booking.id}>
-            <TableCell>
-              <div className="flex items-center space-x-4">
-                <img
-                  src={booking.listing?.images?.[0]?.url || '/placeholder.svg'}
-                  alt={booking.listing?.title || 'Listing thumbnail'}
-                  className="w-16 h-16 object-cover rounded-md"
-                />
-                <span className="font-medium">{booking.listing?.title || 'Listing'}</span>
-              </div>
-            </TableCell>
-            <TableCell>
-                <div className="flex items-center space-x-2">
+    <div className="space-y-4">
+      {/* Desktop Table View */}
+      <Card className="hidden md:block overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="font-semibold">Listing</TableHead>
+              <TableHead className="font-semibold">Borrower</TableHead>
+              <TableHead className="font-semibold">Dates</TableHead>
+              <TableHead className="font-semibold">Total</TableHead>
+              <TableHead className="font-semibold">Status</TableHead>
+              <TableHead className="font-semibold">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {bookings.map(booking => (
+              <TableRow key={booking.id} className="hover:bg-muted/30 transition-colors">
+                <TableCell>
+                  <div className="flex items-center space-x-3">
+                    <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
+                      <img
+                        src={booking.listing?.images?.[0]?.url || '/placeholder.svg'}
+                        alt={booking.listing?.title || 'Listing thumbnail'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="font-medium line-clamp-2">{booking.listing?.title || 'Listing'}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center space-x-2">
                     <img src={booking.borrower?.image || '/placeholder.svg'} alt={booking.borrower?.name || ''} className="w-8 h-8 rounded-full" />
-                    <span>{booking.borrower?.name || 'User'}</span>
+                    <span className="text-sm">{booking.borrower?.name || 'User'}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-sm">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{format(new Date(booking.startDate), 'MMM d')} - {format(new Date(booking.endDate), 'MMM d')}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="font-semibold text-[#0f8c27]">₹{(booking.totalAmount ?? 0).toFixed(0)}</TableCell>
+                <TableCell>
+                  <Badge variant={booking.status === 'APPROVED' ? 'default' : booking.status === 'PENDING' ? 'secondary' : 'outline'} className="capitalize">
+                    {booking.status.toLowerCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {booking.status === 'PENDING' && (
+                      <>
+                        <Button size="sm" onClick={() => handleStatusUpdate(booking.id, 'APPROVED')} className="bg-[#0f8c27] hover:bg-[#0da024] h-8">Approve</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(booking.id, 'REJECTED')} className="h-8">Decline</Button>
+                      </>
+                    )}
+                    {booking.status === 'UPDATING' && <Loader2 className="h-4 w-4 animate-spin text-[#0f8c27]" />}
+                    {(booking.status === 'COMPLETED' || booking.status === 'RETURNED') && (
+                      <Button size="sm" variant="outline" onClick={() => openReview(booking)} className="h-8">
+                        <Star className="h-3.5 w-3.5 mr-1" />
+                        Rate
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" asChild className="h-8">
+                      <a href={booking?.conversation?.id ? `/messages/${booking.conversation.id}` : '/messages'}>
+                        <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                        Message
+                      </a>
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
+
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {bookings.map(booking => (
+          <Card key={booking.id} className="p-4">
+            <div className="space-y-3">
+              {/* Listing Info */}
+              <div className="flex gap-3">
+                <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                  <img
+                    src={booking.listing?.images?.[0]?.url || '/placeholder.svg'}
+                    alt={booking.listing?.title || 'Listing'}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-            </TableCell>
-            <TableCell>{format(new Date(booking.startDate), 'MMM d')} - {format(new Date(booking.endDate), 'MMM d, yyyy')}</TableCell>
-            <TableCell>${(booking.totalAmount ?? 0).toFixed(2)}</TableCell>
-            <TableCell><Badge>{booking.status}</Badge></TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                {booking.status === 'PENDING' && (
-                  <>
-                    <Button size="sm" onClick={() => handleStatusUpdate(booking.id, 'APPROVED')}>Approve</Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(booking.id, 'REJECTED')}>Decline</Button>
-                  </>
-                )}
-                {booking.status === 'UPDATING' && <Loader2 className="h-4 w-4 animate-spin" />}
-                {(booking.status === 'COMPLETED' || booking.status === 'RETURNED') && (
-                  <Button size="sm" variant="secondary" onClick={() => openReview(booking)}>Rate borrower</Button>
-                )}
-                <a href={booking?.conversation?.id ? `/messages/${booking.conversation.id}` : '/messages'}>
-                  <Button size="sm" variant="outline">Message</Button>
-                </a>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm line-clamp-2 mb-1">{booking.listing?.title || 'Listing'}</h3>
+                  <Badge variant={booking.status === 'APPROVED' ? 'default' : booking.status === 'PENDING' ? 'secondary' : 'outline'} className="text-xs capitalize">
+                    {booking.status.toLowerCase()}
+                  </Badge>
+                </div>
               </div>
-            </TableCell>
-          </TableRow>
+
+              {/* Borrower Info */}
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <div className="flex items-center gap-2">
+                  <img src={booking.borrower?.image || '/placeholder.svg'} alt={booking.borrower?.name || ''} className="w-6 h-6 rounded-full" />
+                  <span>{booking.borrower?.name || 'User'}</span>
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                <span>{format(new Date(booking.startDate), 'MMM d')} - {format(new Date(booking.endDate), 'MMM d, yyyy')}</span>
+              </div>
+
+              {/* Amount */}
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold text-[#0f8c27]">₹{(booking.totalAmount ?? 0).toFixed(0)}</span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-2 pt-2 border-t">
+                {booking.status === 'PENDING' && (
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => handleStatusUpdate(booking.id, 'APPROVED')} className="flex-1 bg-[#0f8c27] hover:bg-[#0da024]">Approve</Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(booking.id, 'REJECTED')} className="flex-1">Decline</Button>
+                  </div>
+                )}
+                {booking.status === 'UPDATING' && (
+                  <div className="flex justify-center py-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-[#0f8c27]" />
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  {(booking.status === 'COMPLETED' || booking.status === 'RETURNED') && (
+                    <Button size="sm" variant="outline" onClick={() => openReview(booking)} className="flex-1">
+                      <Star className="h-3.5 w-3.5 mr-1" />
+                      Rate Borrower
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" asChild className="flex-1">
+                    <a href={booking?.conversation?.id ? `/messages/${booking.conversation.id}` : '/messages'}>
+                      <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                      Message
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
         ))}
-      </TableBody>
-    </Table>
+      </div>
+    </div>
 
     <AlertDialog open={reviewOpen} onOpenChange={setReviewOpen}>
       <AlertDialogContent>

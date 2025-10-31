@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
   const minRating = searchParams.get("minRating");
   const location = searchParams.get("location");
   const distance = searchParams.get("distance");
+  const latitude = searchParams.get("latitude");
+  const longitude = searchParams.get("longitude");
   const cursor = searchParams.get("cursor");
   const limit = parseInt(searchParams.get("limit") || "10");
 
@@ -28,7 +30,7 @@ export async function GET(req: NextRequest) {
     where.OR = [
       { title: { contains: search, mode: "insensitive" } },
       { description: { contains: search, mode: "insensitive" } },
-      // NOTE: Prisma does not support `contains` on JSON. We'll handle location text match in-app.
+      { category: { name: { contains: search, mode: "insensitive" } } },
     ];
   }
 
@@ -93,21 +95,41 @@ export async function GET(req: NextRequest) {
     // Application-layer location text filter on JSON field
     const locationQuery = location || null;
     let filtered = raw;
-    if (locationQuery || search) {
-      const q = (locationQuery || "").toString().toLowerCase();
+    if (latitude && longitude && distance) {
+      const lat = parseFloat(latitude);
+      const lon = parseFloat(longitude);
+      const dist = parseFloat(distance);
+
+      filtered = raw.filter((l: any) => {
+        const loc = l.location || {};
+        const listingLat = loc.latitude;
+        const listingLon = loc.longitude;
+
+        if (listingLat && listingLon) {
+          const R = 6371; // Radius of the earth in km
+          const dLat = (listingLat - lat) * (Math.PI / 180);
+          const dLon = (listingLon - lon) * (Math.PI / 180);
+          const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat * (Math.PI / 180)) *
+              Math.cos(listingLat * (Math.PI / 180)) *
+              Math.sin(dLon / 2) *
+              Math.sin(dLon / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          const d = R * c; // Distance in km
+          return d <= dist;
+        }
+        return false;
+      });
+    } else if (locationQuery) {
+      const q = locationQuery.toString().toLowerCase();
       filtered = raw.filter((l: any) => {
         const loc = l.location || {};
         const city = (loc.city || "").toString().toLowerCase();
         const state = (loc.state || "").toString().toLowerCase();
         const country = (loc.country || "").toString().toLowerCase();
         const address = (loc.address || "").toString().toLowerCase();
-        // If explicit location param, match against location fields
-        if (locationQuery) {
-          return (
-            city.includes(q) || state.includes(q) || country.includes(q) || address.includes(q)
-          );
-        }
-        return true;
+        return city.includes(q) || state.includes(q) || country.includes(q) || address.includes(q);
       });
     }
 

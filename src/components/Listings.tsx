@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ListingCard as SearchListingCard } from "@/components/listing-card";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ListingCardSkeleton from "@/components/ListingCardSkeleton";
 import { Loader2, PackageOpen, AlertCircle } from "lucide-react";
@@ -118,9 +119,10 @@ export default function Listings(props: ListingsFilters = {}) {
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {listings.map((listing) => (
+          <Link href={`/listings/${listing.slug}`} key={listing.id}>
           <SearchListingCard
-            key={listing.id}
             id={listing.id}
+            slug={listing.slug}
             title={listing.title}
             category={listing.category?.name ?? "General"}
             pricePerDay={listing.pricePerDay}
@@ -129,6 +131,7 @@ export default function Listings(props: ListingsFilters = {}) {
             rating={listing.rating ?? 0}
             reviewCount={listing.reviewCount ?? 0}
           />
+        </Link>
         ))}
       </div>
       {isLoading && (

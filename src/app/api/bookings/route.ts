@@ -18,6 +18,15 @@ export async function POST(req: Request) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (start < today) {
+      return new NextResponse("Cannot book for a past date", { status: 400 });
+    }
+
     const listing = await prisma.listing.findUnique({
       where: { id: listingId },
     });
@@ -59,8 +68,6 @@ export async function POST(req: Request) {
     }
 
     // --- Price Calculation ---
-    const start = new Date(startDate);
-    const end = new Date(endDate);
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     const totalPrice = days * listing.pricePerDay;
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Loader2, MapPin, Shield, Calendar, Star, MessageCircle, Info } from 'lucide-react';
+import { Loader2, MapPin, Shield, Star, MessageCircle, Info, Phone } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import PremiumModal from '@/components/PremiumModal';
 
 export default function ListingPage() {
   const { slug } = useParams();
@@ -22,6 +23,7 @@ export default function ListingPage() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
   const [hasExistingBooking, setHasExistingBooking] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   
   // Check if current user is the owner
   const isOwner = session?.user?.id && listing?.ownerId === session.user.id;
@@ -101,13 +103,14 @@ export default function ListingPage() {
   if (!listing) return <div className="text-center py-12">Listing not found.</div>;
 
   return (
+    <>
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 md:px-8 py-8">
-        <div className="grid lg:grid-cols-3 gap-8">
+      <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-8">
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Main Content - Left Side */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Main Image */}
-            <div className="aspect-[3/2] rounded-xl overflow-hidden">
+            <div className="aspect-[4/3] md:aspect-[3/2] rounded-lg md:rounded-xl overflow-hidden shadow-md">
               <img
                 src={listing.images[0]?.url || '/placeholder.svg'}
                 alt={listing.title}
@@ -117,9 +120,9 @@ export default function ListingPage() {
 
             {/* Thumbnail Gallery */}
             {listing.images.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2 md:gap-3">
                 {listing.images.slice(1, 5).map((img: any, idx: number) => (
-                  <div key={idx} className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity">
+                  <div key={idx} className="aspect-square rounded-md md:rounded-lg overflow-hidden cursor-pointer hover:opacity-80 hover:scale-105 transition-all shadow-sm">
                     <img
                       src={img.url}
                       alt={`View ${idx + 2}`}
@@ -133,10 +136,10 @@ export default function ListingPage() {
             {/* Title and Info Section */}
             <div className="space-y-4">
               <div>
-                <div className="flex items-start justify-between gap-4 mb-2">
-                  <div>
-                    <h1 className="text-3xl font-bold mb-2">{listing.title}</h1>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 mb-2">
+                  <div className="flex-1">
+                    <h1 className="text-2xl capitalize md:text-3xl lg:text-4xl font-bold mb-2 leading-tight">{listing.title}</h1>
+                    <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
                         <span>{listing.location?.city || 'Location not set'}</span>
@@ -153,7 +156,7 @@ export default function ListingPage() {
                     </div>
                   </div>
                   {listing.category && (
-                    <Badge variant="secondary">{listing.category.name}</Badge>
+                    <Badge variant="secondary" className="shrink-0">{listing.category.name}</Badge>
                   )}
                 </div>
               </div>
@@ -162,30 +165,43 @@ export default function ListingPage() {
 
               {/* Owner Card */}
               {listing.owner && (
-                <Card className="p-4">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
+                <Card className="p-4 md:p-5">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <Avatar className="h-14 w-14 md:h-12 md:w-12">
                       <AvatarImage src={listing.owner.image} alt={listing.owner.name} />
                       <AvatarFallback>{listing.owner.name?.[0]}</AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{listing.owner.name}</h3>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span>Response rate: 98%</span>
-                        <span>•</span>
-                        <span>Member since {new Date(listing.owner.createdAt).getFullYear()}</span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-base md:text-lg">{listing.owner.name}</h3>
+                      <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs md:text-sm text-muted-foreground">
+                        <span className="whitespace-nowrap">Response rate: 98%</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="whitespace-nowrap">Member since {new Date(listing.owner.createdAt).getFullYear()}</span>
                       </div>
                     </div>
-                    <Button variant="outline">
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Message
+                    <Button 
+                      size="default"
+                      className="w-full sm:w-auto relative overflow-hidden group bg-gradient-to-r from-[#0f8c27] via-[#0da024] to-[#0f8c27] hover:from-[#0da024] hover:via-[#0b8a1f] hover:to-[#0da024] text-white font-bold shadow-lg shadow-[#0f8c27]/30 hover:shadow-xl hover:shadow-[#0f8c27]/50 hover:scale-[1.02] transition-all duration-300 border-0"
+                      onClick={() => {
+                        if (session?.user?.isPremium) {
+                          // Implement logic to show number
+                        } else {
+                          setShowPremiumModal(true);
+                        }
+                      }}
+                    >
+                      <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
+                      <span className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.3),transparent_50%)]"></span>
+                      <Phone className="h-4 w-4 mr-2 relative z-10 drop-shadow-sm" />
+                      <span className="hidden sm:inline relative z-10 tracking-wide">Show Number</span>
+                      <span className="sm:hidden relative z-10 tracking-wide">Contact</span>
                     </Button>
                   </div>
                 </Card>
               )}
               {/* Tabs for Description, Reviews, Location */}
               <Tabs defaultValue="description" className="space-y-4">
-                <TabsList>
+                <TabsList className="w-full justify-start overflow-x-auto">
                   <TabsTrigger value="description">Description</TabsTrigger>
                   <TabsTrigger value="reviews">Reviews</TabsTrigger>
                   <TabsTrigger value="location">Location</TabsTrigger>
@@ -229,9 +245,9 @@ export default function ListingPage() {
                   <div className="flex items-start gap-3 p-4 bg-muted rounded-lg">
                     <Shield className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                     <div className="text-sm">
-                      <p className="font-medium">Protected by Reloji</p>
+                      <p className="font-medium">Your safety is our priority</p>
                       <p className="text-muted-foreground">
-                        All rentals are covered by our protection plan. Your deposit is held securely and refunded after safe return.
+                        All transactions are handled directly between you and the owner. Reloji does not process payments for rentals.
                       </p>
                     </div>
                   </div>
@@ -312,12 +328,12 @@ export default function ListingPage() {
 
           {/* Booking Sidebar - Right Side */}
           <div className="lg:col-span-1">
-            <Card className="p-6 space-y-6 sticky top-24">
+            <Card className="p-5 md:p-6 space-y-4 md:space-y-6 lg:sticky lg:top-24">
               {/* Price */}
               <div>
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className="text-3xl font-bold text-primary">₹{listing.pricePerDay}</span>
-                  <span className="text-muted-foreground">/ day</span>
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="text-2xl md:text-3xl font-bold text-primary">₹{listing.pricePerDay}</span>
+                  <span className="text-sm md:text-base text-muted-foreground">/ day</span>
                 </div>
                 {listing.depositAmount && (
                   <p className="text-sm text-muted-foreground">+ ₹{listing.depositAmount} deposit</p>
@@ -357,9 +373,9 @@ export default function ListingPage() {
                       </AlertDescription>
                     </Alert>
                   ) : (
-                  <form onSubmit={handleBookingRequest} className="space-y-3">
+                  <form onSubmit={handleBookingRequest} className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium mb-2 block">Rental period</label>
+                      <label className="text-sm md:text-base font-medium mb-2 block">Rental period</label>
                       <div className="space-y-2">
                         <input 
                           type="date" 
@@ -382,7 +398,7 @@ export default function ListingPage() {
 
                     <Button 
                       type="submit" 
-                      className="w-full" 
+                      className="w-full font-semibold" 
                       size="lg"
                       disabled={isBooking || sessionStatus !== 'authenticated'}
                     >
@@ -394,7 +410,7 @@ export default function ListingPage() {
                 </>
               )}
 
-              <p className="text-xs text-center text-muted-foreground">
+              <p className="text-xs md:text-sm text-center text-muted-foreground leading-relaxed">
                 You won't be charged until the owner approves your request
               </p>
             </Card>
@@ -402,5 +418,7 @@ export default function ListingPage() {
         </div>
       </div>
     </div>
+    <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
+    </>
   )
 }

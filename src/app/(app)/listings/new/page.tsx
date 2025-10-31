@@ -12,7 +12,7 @@ import { ItemCondition } from '@prisma/client';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2, Upload, X, ImageIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AuthCard, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/auth-card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 
@@ -216,7 +216,7 @@ export default function NewListingPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit((v:any) => onSubmit(v as FormValues))} className="space-y-6">
             {/* Basic Information Card */}
-            <Card className="border-2 hover:border-primary/50 transition-colors">
+            <AuthCard className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
                 <CardTitle className="text-lg md:text-xl">Basic Information</CardTitle>
                 <CardDescription>Tell us about your item</CardDescription>
@@ -290,11 +290,11 @@ export default function NewListingPage() {
                   />
                 </div>
               </CardContent>
-            </Card>
+            </AuthCard>
 
             {/* Circle Selection Card */}
             {circles.length > 0 && (
-              <Card className="border-2 hover:border-primary/50 transition-colors">
+              <AuthCard className="border-2 hover:border-primary/50 transition-colors">
                 <CardHeader>
                   <CardTitle className="text-lg md:text-xl">Share in a Circle</CardTitle>
                   <CardDescription>Optionally, share this item within one of your circles.</CardDescription>
@@ -325,11 +325,11 @@ export default function NewListingPage() {
                     )}
                   />
                 </CardContent>
-              </Card>
+              </AuthCard>
             )}
 
             {/* Pricing Card */}
-            <Card className="border-2 hover:border-primary/50 transition-colors">
+            <AuthCard className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
                 <CardTitle className="text-lg md:text-xl">Pricing</CardTitle>
                 <CardDescription>Set your rates and deposit</CardDescription>
@@ -370,10 +370,10 @@ export default function NewListingPage() {
                   />
                 </div>
               </CardContent>
-            </Card>
+            </AuthCard>
 
             {/* Details Card */}
-            <Card className="border-2 hover:border-primary/50 transition-colors">
+            <AuthCard className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
                 <CardTitle className="text-lg md:text-xl">Rental Details</CardTitle>
                 <CardDescription>Define your rental terms and conditions</CardDescription>
@@ -421,10 +421,10 @@ export default function NewListingPage() {
                   )}
                 />
               </CardContent>
-            </Card>
+            </AuthCard>
 
             {/* Images Card */}
-            <Card className="border-2 hover:border-primary/50 transition-colors">
+            <AuthCard className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader>
                 <CardTitle className="text-lg md:text-xl">Images</CardTitle>
                 <CardDescription>Upload clear photos of your item *</CardDescription>
@@ -473,7 +473,7 @@ export default function NewListingPage() {
                   </div>
                 )}
               </CardContent>
-            </Card>
+            </AuthCard>
 
             {/* Submit Button */}
             <div className="flex justify-end gap-4 pt-4">

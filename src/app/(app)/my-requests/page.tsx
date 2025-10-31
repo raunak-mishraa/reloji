@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Calendar, Package, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 // Define types for better type safety
 type Listing = {
@@ -48,48 +50,112 @@ export default function MyRequestsPage() {
   }, [status]);
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin" /></div>;
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="h-10 w-10 animate-spin text-[#0f8c27]" />
+      </div>
+    );
   }
 
   if (status === 'unauthenticated') {
-    return <div className="text-center py-12">Please <Link href="/api/auth/signin" className="underline">sign in</Link> to view your requests.</div>;
+    return (
+      <div className="container mx-auto py-12 px-4 md:px-8 text-center">
+        <Card className="max-w-md mx-auto p-8">
+          <h2 className="text-xl font-semibold mb-4">Authentication Required</h2>
+          <p className="text-muted-foreground mb-6">Please sign in to view your requests.</p>
+          <Button asChild className="bg-[#0f8c27] hover:bg-[#0da024]">
+            <Link href="/api/auth/signin">Sign In</Link>
+          </Button>
+        </Card>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-center text-red-500 py-12">Error: {error}</div>;
+    return (
+      <div className="container mx-auto py-12 px-4 md:px-8">
+        <Card className="max-w-md mx-auto p-6 border-destructive/50 bg-destructive/5">
+          <p className="text-destructive text-center">Error: {error}</p>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-8">My Borrow Requests</h1>
-      {requests.length === 0 ? (
-        <p>You haven't made any borrow requests yet.</p>
-      ) : (
-        <div className="space-y-6">
-          {requests.map(req => (
-            <div key={req.id} className="border rounded-lg p-4 flex justify-between items-center shadow-sm">
-              <div className="flex items-center">
-                <img 
-                  src={req.listing.images[0]?.url || '/placeholder.svg'} 
-                  alt={req.listing.title} 
-                  className="w-24 h-24 object-cover rounded-md mr-4"
-                />
-                <div>
-                  <Link href={`/listings/${req.listing.id}`} className="font-bold text-lg hover:underline">
-                    {req.listing.title}
-                  </Link>
-                  <p className="text-sm text-muted-foreground">
-                    Dates: {new Date(req.startDate).toLocaleDateString()} - {new Date(req.endDate).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <Badge variant={req.status === 'PENDING' ? 'default' : 'secondary'} className="capitalize">
-                {req.status.toLowerCase()}
-              </Badge>
-            </div>
-          ))}
+    <div className="min-h-screen bg-gradient-to-b from-background to-[#0f8c27]/5">
+      <div className="container mx-auto py-6 md:py-10 px-4 md:px-8">
+        {/* Header Section */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground">My Requests</h1>
+          <p className="text-muted-foreground mt-1">Track your borrow requests</p>
         </div>
-      )}
+
+        {/* Empty State */}
+        {requests.length === 0 ? (
+          <Card className="p-8 md:p-12 text-center border-dashed">
+            <Package className="h-12 w-12 md:h-16 md:w-16 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg md:text-xl font-semibold mb-2">No requests yet</h3>
+            <p className="text-sm md:text-base text-muted-foreground mb-4">Start browsing items to make your first request</p>
+            <Button asChild size="sm" className="bg-[#0f8c27] hover:bg-[#0da024]">
+              <Link href="/search">Browse Items</Link>
+            </Button>
+          </Card>
+        ) : (
+          /* Requests List */
+          <div className="space-y-4">
+            {requests.map(req => (
+              <Card key={req.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {/* Image and Info Section */}
+                    <div className="flex gap-4 flex-1">
+                      <Link href={`/listings/${req.listing.id}`} className="flex-shrink-0">
+                        <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-lg overflow-hidden bg-muted hover:opacity-90 transition-opacity">
+                          <img 
+                            src={req.listing.images[0]?.url || '/placeholder.svg'} 
+                            alt={req.listing.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </Link>
+                      
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/listings/${req.listing.id}`}>
+                          <h2 className="font-semibold text-base md:text-lg mb-2 line-clamp-2 hover:text-[#0f8c27] transition-colors">
+                            {req.listing.title}
+                          </h2>
+                        </Link>
+                        
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                          <Calendar className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">
+                            {new Date(req.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(req.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <Badge variant={req.status === 'PENDING' ? 'default' : req.status === 'APPROVED' ? 'outline' : 'secondary'} className="capitalize text-xs">
+                            {req.status.toLowerCase()}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Action Button */}
+                    <div className="flex sm:items-center">
+                      <Button variant="outline" size="sm" asChild className="gap-2 w-full sm:w-auto">
+                        <Link href={`/listings/${req.listing.id}`}>
+                          <Eye className="h-4 w-4" /> View Listing
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

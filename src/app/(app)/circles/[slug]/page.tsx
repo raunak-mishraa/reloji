@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Users, Lock } from 'lucide-react';
+import { Loader2, Users, Lock, Package, UserPlus, UserMinus } from 'lucide-react';
 import Link from 'next/link';
 import { ListingCard as SearchListingCard } from '@/components/listing-card';
 
@@ -80,18 +80,79 @@ export default function CirclePage() {
     }
   };
 
-  if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="h-12 w-12 animate-spin" /></div>;
+  if (isLoading) return (
+    <div className="min-h-screen">
+      <div className="relative h-48 md:h-64 w-full overflow-hidden bg-gradient-to-br from-primary/30 via-primary/20 to-primary/10 animate-pulse" />
+      
+      <div className="container mx-auto px-4 md:px-8 -mt-24 relative z-10">
+        <Card className="bg-background/95 backdrop-blur border shadow-2xl mb-12">
+          <div className="p-6 md:p-10">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="flex-1 space-y-6">
+                <div className="space-y-3">
+                  <div className="h-10 bg-muted rounded-lg w-64 animate-pulse" />
+                  <div className="h-5 bg-muted rounded w-96 animate-pulse" />
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-8">
+                  <div className="flex items-center gap-3">
+                    <div className="h-16 w-16 bg-muted rounded-xl animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="h-7 w-12 bg-muted rounded animate-pulse" />
+                      <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-16 w-16 bg-muted rounded-xl animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="h-7 w-12 bg-muted rounded animate-pulse" />
+                      <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3 pt-6 border-t">
+                  <div className="h-8 w-8 bg-muted rounded-full animate-pulse" />
+                  <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                </div>
+              </div>
+              
+              <div className="h-12 w-40 bg-muted rounded-lg animate-pulse" />
+            </div>
+          </div>
+        </Card>
+
+        <div className="mb-12">
+          <div className="mb-8 space-y-2">
+            <div className="h-8 w-64 bg-muted rounded animate-pulse" />
+            <div className="h-5 w-96 bg-muted rounded animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="space-y-3">
+                <div className="aspect-[4/3] bg-muted rounded-lg animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
+                  <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
   if (error) return <div className="text-center text-red-500 py-20">Error: {error}</div>;
   if (!circle) return <div className="text-center py-20">Circle not found.</div>;
 
   const Banner = () => (
-    <div className="relative h-64 md:h-80 w-full overflow-hidden">
+    <div className="relative h-48 md:h-64 w-full overflow-hidden">
       {circle.bannerImage ? (
         <img src={circle.bannerImage} alt={`${circle.name} banner`} className="w-full h-full object-cover" />
       ) : (
-        <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-background" />
+        <div className="w-full h-full bg-gradient-to-br from-primary/30 via-primary/20 to-primary/10" />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
     </div>
   );
 
@@ -99,73 +160,87 @@ export default function CirclePage() {
     <div className="min-h-screen">
       <Banner />
       
-      <div className="container mx-auto px-4 md:px-8 -mt-32 relative z-10">
-        <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border rounded-xl p-6 md:p-8 shadow-xl mb-12">
-          <div className="flex flex-col md:flex-row gap-6 items-start">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <h1 className="text-4xl md:text-5xl font-bold tracking-tight capitalize">{circle.name}</h1>
-                {circle.privacy === 'PRIVATE' && (
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs font-medium">
-                    <Lock className="h-3 w-3" />
-                    <span>Private</span>
+      <div className="container mx-auto px-4 md:px-8 -mt-24 relative z-10">
+        <Card className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90 border shadow-2xl mb-12">
+          <div className="p-6 md:p-10">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+              <div className="flex-1 space-y-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-3xl md:text-4xl font-bold tracking-tight capitalize">{circle.name}</h1>
+                    {circle.privacy === 'PRIVATE' && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-xs font-medium">
+                        <Lock className="h-3.5 w-3.5" />
+                        <span>Private</span>
+                      </div>
+                    )}
                   </div>
-                )}
+                  
+                  {circle.description && (
+                    <p className="text-base text-muted-foreground max-w-2xl leading-relaxed">{circle.description}</p>
+                  )}
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-8">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-primary/10">
+                      <Users className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{circle._count.members}</p>
+                      <p className="text-sm text-muted-foreground">Members</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-primary/10">
+                      <Package className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold">{circle._count.listings}</p>
+                      <p className="text-sm text-muted-foreground">Items</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3 pt-6 border-t">
+                  <span className="text-sm text-muted-foreground">Created by</span>
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={circle.creator.image} />
+                    <AvatarFallback>{circle.creator.name[0]}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-semibold">{circle.creator.name}</span>
+                </div>
               </div>
               
-              {circle.description && (
-                <p className="text-lg text-muted-foreground mb-6 max-w-3xl">{circle.description}</p>
+              {session && (
+                <Button 
+                  onClick={handleMembership} 
+                  disabled={isJoining}
+                  size="lg"
+                  variant={circle.isMember ? "outline" : "default"}
+                  className="md:mt-0 min-w-[160px] font-medium"
+                >
+                  {isJoining ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : circle.isMember ? (
+                    <UserMinus className="mr-2 h-4 w-4" />
+                  ) : (
+                    <UserPlus className="mr-2 h-4 w-4" />
+                  )}
+                  {circle.isMember ? 'Leave Circle' : 'Join Circle'}
+                </Button>
               )}
-              
-              <div className="flex flex-wrap items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{circle._count.members}</p>
-                    <p className="text-xs text-muted-foreground">Members</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{circle._count.listings}</p>
-                    <p className="text-xs text-muted-foreground">Items Shared</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2 mt-6 pt-6 border-t">
-                <span className="text-sm text-muted-foreground">Created by</span>
-                <Avatar className="h-7 w-7">
-                  <AvatarImage src={circle.creator.image} />
-                  <AvatarFallback>{circle.creator.name[0]}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{circle.creator.name}</span>
-              </div>
             </div>
-            
-            {session && (
-              <Button 
-                onClick={handleMembership} 
-                disabled={isJoining}
-                size="lg"
-                className="md:mt-0"
-              >
-                {isJoining ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {circle.isMember ? 'Leave Circle' : 'Join Circle'}
-              </Button>
-            )}
           </div>
-        </div>
+        </Card>
 
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-6">Items in this Circle</h2>
+        <div className="mb-12">
+          <div className="mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2">Items in this Circle</h2>
+            <p className="text-muted-foreground">Browse all items shared by circle members</p>
+          </div>
           {listings.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {listings.map(listing => (
                 <Link href={`/listings/${listing.slug}`} key={listing.id}>
                 <SearchListingCard
@@ -183,15 +258,20 @@ export default function CirclePage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-20 px-4">
+            <Card className="text-center py-16 px-4">
               <div className="max-w-md mx-auto">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-                  <Users className="h-8 w-8 text-muted-foreground" />
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+                  <Package className="h-10 w-10 text-muted-foreground" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">No items yet</h3>
-                <p className="text-muted-foreground">Be the first to share an item in this circle!</p>
+                <h3 className="text-2xl font-semibold mb-3">No items yet</h3>
+                <p className="text-muted-foreground mb-6">Be the first to share an item in this circle!</p>
+                {session && circle.isMember && (
+                  <Button asChild>
+                    <Link href="/listings/new">Share an Item</Link>
+                  </Button>
+                )}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       </div>

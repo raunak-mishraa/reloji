@@ -1,5 +1,5 @@
 import NextAuth, { AuthOptions } from "next-auth";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import GoogleProvider from "next-auth/providers/google";
 import AppleProvider from "next-auth/providers/apple";
@@ -56,7 +56,7 @@ export const authOptions: AuthOptions = {
     strategy: "jwt" as const,
   },
   callbacks: {
-    async session({ session, token }: { session: any; token: any }) {
+    async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
         session.user.name = token.name;
@@ -64,25 +64,25 @@ export const authOptions: AuthOptions = {
         session.user.image = token.picture;
         session.user.phone = token.phone ?? null;
         session.user.role = token.role;
+        session.user.isPremium = token.isPremium;
       }
       return session;
     },
-    async jwt({ token, user }: { token: any; user: any }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
         token.picture = user.image;
         token.role = user.role;
-        // Phone is stored on Profile
-        const profile = await prisma.profile.findUnique({ where: { userId: user.id } });
-        token.phone = profile?.phone ?? null;
+        token.phone = user.phone;
+        token.isPremium = user.isPremium;
       } else if (token?.id) {
-        // Ensure phone and role are present on subsequent requests
-        const dbUser = await prisma.user.findUnique({ where: { id: token.id }, select: { role: true } });
-        const profile = await prisma.profile.findUnique({ where: { userId: token.id } });
-        token.phone = profile?.phone ?? null;
+        // Ensure phone, role, and isPremium are present on subsequent requests
+        const dbUser = await prisma.user.findUnique({ where: { id: token.id }, select: { role: true, phone: true, isPremium: true } });
+        token.phone = dbUser?.phone ?? token.phone;
         token.role = dbUser?.role ?? token.role;
+        token.isPremium = dbUser?.isPremium ?? token.isPremium;
       }
       return token;
     },

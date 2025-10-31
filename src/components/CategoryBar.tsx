@@ -7,21 +7,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Car, Bike, Smartphone, Home, ChevronDown, Grid3x3 } from "lucide-react";
 
 const categories = [
-  "Cars",
-  "Motorcycles",
-  "Mobile Phones",
-  "For Sale: Houses & Apartments",
-  "Scooters",
-  "Commercial & Other Vehicles",
-  "For Rent: Houses & Apartments",
+  { name: "Cars", icon: Car },
+  { name: "Motorcycles", icon: Bike },
+  { name: "Mobile Phones", icon: Smartphone },
+  { name: "Houses & Apartments", icon: Home },
+  { name: "Scooters", icon: Bike },
+  { name: "Electronics", icon: Smartphone },
+  { name: "Furniture", icon: Home },
 ];
 
 export default function CategoryBar() {
-  const todayLabel = "21 Oct, 2025";
   const router = useRouter();
 
   const goToSearch = (name: string | undefined) => {
@@ -29,33 +28,54 @@ export default function CategoryBar() {
     if (name) params.set('search', name);
     router.push(`/search?${params.toString()}`);
   };
+
   return (
-    <div className="w-full border-b bg-background/95">
-      <div className="container mx-auto px-4 md:px-8 py-3 flex items-center gap-4 overflow-x-auto">
-        <nav className="flex items-center gap-3 whitespace-nowrap">
+    <div className="w-full border-b bg-background">
+      <div className="container mx-auto px-4 md:px-6 lg:px-8">
+        <div className="flex items-center gap-2 py-2 overflow-x-auto scrollbar-hide">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="text-sm px-3 py-1.5 rounded-full border">All Categories</Button>
+              <Button variant="ghost" size="sm" className="gap-1.5 shrink-0">
+                <Grid3x3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Categories</span>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => goToSearch(undefined)}>All Categories</DropdownMenuItem>
-              {categories.map((c) => (
-                <DropdownMenuItem key={c} onClick={() => goToSearch(c)}>{c}</DropdownMenuItem>
-              ))}
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuItem onClick={() => goToSearch(undefined)}>
+                <Grid3x3 className="mr-2 h-4 w-4" />
+                All Categories
+              </DropdownMenuItem>
+              {categories.map((c) => {
+                const Icon = c.icon;
+                return (
+                  <DropdownMenuItem key={c.name} onClick={() => goToSearch(c.name)}>
+                    <Icon className="mr-2 h-4 w-4" />
+                    {c.name}
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {categories.slice(0, 4).map((c) => (
-            <button
-              key={c}
-              onClick={() => goToSearch(c)}
-              className="text-sm px-3 py-1.5 rounded-full border hidden md:block hover:bg-accent hover:text-accent-foreground transition-colors"
-            >
-              {c}
-            </button>
-          ))}
-        </nav>
-        <div className="ml-auto text-xs text-muted-foreground">{todayLabel}</div>
+          <div className="h-6 w-px bg-border hidden md:block" />
+
+          {categories.slice(0, 5).map((c) => {
+            const Icon = c.icon;
+            return (
+              <Button
+                key={c.name}
+                variant="ghost"
+                size="sm"
+                onClick={() => goToSearch(c.name)}
+                className="gap-1.5 hidden md:flex shrink-0"
+              >
+                <Icon className="h-4 w-4" />
+                {c.name}
+              </Button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
