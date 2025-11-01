@@ -73,31 +73,33 @@ export default function NewListingPage() {
       .then(setCircles);
   }, []);
 
+  const fetchAndSetLocation = async (latitude: number, longitude: number) => {
+    setCoords({ lat: latitude, lng: longitude });
+    try {
+      const res = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        // Prioritize locality for more specific results, then city.
+        const locationName = data.locality || data.city || data.principalSubdivision || '';
+        const country = data.countryName || '';
+        const label = [locationName, country].filter(Boolean).join(', ');
+        if (label) {
+          form.setValue('location', label, { shouldValidate: true });
+        }
+      }
+    } catch (e) {
+      // Silently ignore reverse geocode errors
+    }
+  };
+
   useEffect(() => {
     if (!navigator?.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setCoords({ lat: latitude, lng: longitude });
-        try {
-          const res = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            const city = data.city || data.locality || data.principalSubdivision || '';
-            const country = data.countryName || '';
-            const label = [city, country].filter(Boolean).join(', ');
-            if (label) {
-              form.setValue('location', label as any, { shouldValidate: true });
-            }
-          }
-        } catch (e) {
-          // ignore reverse geocode errors
-        }
-      },
+      (pos) => fetchAndSetLocation(pos.coords.latitude, pos.coords.longitude),
       () => {
-        // user denied or error, keep manual input
+        // User denied or error, allow manual input
       }
     );
   }, []);
@@ -105,25 +107,10 @@ export default function NewListingPage() {
   const useCurrentLocation = () => {
     if (!navigator?.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setCoords({ lat: latitude, lng: longitude });
-        try {
-          const res = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            const city = data.city || data.locality || data.principalSubdivision || '';
-            const country = data.countryName || '';
-            const label = [city, country].filter(Boolean).join(', ');
-            if (label) {
-              form.setValue('location', label as any, { shouldValidate: true });
-            }
-          }
-        } catch {}
-      },
-      () => {}
+      (pos) => fetchAndSetLocation(pos.coords.latitude, pos.coords.longitude),
+      () => {
+        toast({ title: 'Location Error', description: 'Could not retrieve your location.', variant: 'destructive' });
+      }
     );
   };
 

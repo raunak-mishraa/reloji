@@ -43,7 +43,7 @@ export function SearchBar({ placeholder = "Search for items...", onSearch }: { p
 
   return (
     <form 
-      className="relative w-full flex items-center bg-background border rounded-full shadow-sm hover:shadow-md transition-all focus-within:shadow-md" 
+      className="relative w-full flex items-center bg-[#F6F5F4]  rounded-full transition-all focus-within:shadow-md" 
       onSubmit={(e) => { 
         e.preventDefault(); 
         goSearch();

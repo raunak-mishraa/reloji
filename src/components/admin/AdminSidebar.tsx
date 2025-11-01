@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Package, Users, Calendar, Tag, AlertCircle, Shield, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, Users, Calendar, Tag, AlertCircle, Shield, LogOut, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setActiveTab } from '@/store/slices/adminSlice';
@@ -14,6 +14,7 @@ const navItems = [
   { id: 'users', label: 'Users', icon: Users },
   { id: 'bookings', label: 'Bookings', icon: Calendar },
   { id: 'categories', label: 'Categories', icon: Tag },
+  { id: 'messages', label: 'Messages', icon: MessageSquare },
   { id: 'disputes', label: 'Disputes', icon: AlertCircle, disabled: true },
 ];
 

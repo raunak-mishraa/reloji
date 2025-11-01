@@ -1,149 +1,82 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { Button } from '@/components/ui/button';
+import { notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import { Metadata, ResolvingMetadata } from 'next';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Users, Lock, Package, UserPlus, UserMinus } from 'lucide-react';
+import { Users, Lock, Package } from 'lucide-react';
 import Link from 'next/link';
-import { ListingCard as SearchListingCard } from '@/components/listing-card';
+import { ListingCard } from '@/components/listing-card';
+import { Button } from '@/components/ui/button';
+import CircleMembershipButton from './CircleMembershipButton';
 
-interface Circle {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  bannerImage: string | null;
-  privacy: 'PUBLIC' | 'PRIVATE';
-  creator: { name: string; image: string };
-  _count: { members: number; listings: number };
-  isMember: boolean;
+interface CirclePageProps {
+  params: { slug: string };
 }
 
-interface Listing {
-  id: string;
-  title: string;
-  slug: string;
-  pricePerDay: number;
-  images: { url: string }[];
-  category?: { name: string };
-  rating?: number;
-  location?: any;
+async function getCircle(slug: string, userId?: string) {
+  const circle = await prisma.circle.findUnique({
+    where: { slug },
+    include: {
+      creator: { select: { name: true, image: true } },
+      _count: { select: { members: true, listings: true } },
+      listings: {
+        include: {
+          images: true,
+          category: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      },
+    },
+  });
+
+  if (!circle) return null;
+
+  const isMember = userId
+    ? (await prisma.circleMember.count({
+        where: { circleId: circle.id, userId },
+      })) > 0
+    : false;
+
+  return { ...circle, isMember };
 }
 
-export default function CirclePage() {
-  const { slug } = useParams();
-  const { data: session } = useSession();
-  const [circle, setCircle] = useState<Circle | null>(null);
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isJoining, setIsJoining] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export async function generateMetadata(
+  { params }: CirclePageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const session = await getServerSession(authOptions);
+  const circle = await getCircle(params.slug, session?.user?.id);
 
-  useEffect(() => {
-    if (slug) {
-      Promise.all([
-        fetch(`/api/circles/${slug}`).then(res => res.json()),
-        fetch(`/api/circles/${slug}/listings`).then(res => res.json()),
-      ])
-        .then(([circleData, listingsData]) => {
-          if (circleData.error) throw new Error(circleData.error);
-          if (listingsData.error) throw new Error(listingsData.error);
-          setCircle(circleData);
-          setListings(listingsData);
-        })
-        .catch(err => setError(err.message))
-        .finally(() => setIsLoading(false));
-    }
-  }, [slug]);
+  if (!circle) {
+    return { title: 'Circle Not Found' };
+  }
 
-  const handleMembership = async () => {
-    if (!session) return; // Or prompt to sign in
-    setIsJoining(true);
-    const method = circle?.isMember ? 'DELETE' : 'POST';
+  const previousImages = (await parent).openGraph?.images || [];
+  const bannerImage = circle.bannerImage;
 
-    try {
-      const response = await fetch(`/api/circles/${slug}/members`, { method });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || `Failed to ${method === 'POST' ? 'join' : 'leave'} circle`);
-      }
-      // Refresh circle data to update membership status and member count
-      const updatedCircle = await fetch(`/api/circles/${slug}`).then(res => res.json());
-      setCircle(updatedCircle);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsJoining(false);
-    }
+  return {
+    title: circle.name,
+    description: circle.description?.substring(0, 160) || `Join the ${circle.name} circle on Reloji.`,
+    openGraph: {
+      title: `${circle.name} on Reloji`,
+      description: circle.description?.substring(0, 160) || `A community for sharing and renting items.`,
+      images: bannerImage ? [bannerImage, ...previousImages] : previousImages,
+    },
   };
+}
 
-  if (isLoading) return (
-    <div className="min-h-screen">
-      <div className="relative h-48 md:h-64 w-full overflow-hidden bg-gradient-to-br from-primary/30 via-primary/20 to-primary/10 animate-pulse" />
-      
-      <div className="container mx-auto px-4 md:px-8 -mt-24 relative z-10">
-        <Card className="bg-background/95 backdrop-blur border shadow-2xl mb-12">
-          <div className="p-6 md:p-10">
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-1 space-y-6">
-                <div className="space-y-3">
-                  <div className="h-10 bg-muted rounded-lg w-64 animate-pulse" />
-                  <div className="h-5 bg-muted rounded w-96 animate-pulse" />
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-8">
-                  <div className="flex items-center gap-3">
-                    <div className="h-16 w-16 bg-muted rounded-xl animate-pulse" />
-                    <div className="space-y-2">
-                      <div className="h-7 w-12 bg-muted rounded animate-pulse" />
-                      <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="h-16 w-16 bg-muted rounded-xl animate-pulse" />
-                    <div className="space-y-2">
-                      <div className="h-7 w-12 bg-muted rounded animate-pulse" />
-                      <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3 pt-6 border-t">
-                  <div className="h-8 w-8 bg-muted rounded-full animate-pulse" />
-                  <div className="h-4 w-32 bg-muted rounded animate-pulse" />
-                </div>
-              </div>
-              
-              <div className="h-12 w-40 bg-muted rounded-lg animate-pulse" />
-            </div>
-          </div>
-        </Card>
+export default async function CirclePage({ params }: CirclePageProps) {
+  const session = await getServerSession(authOptions);
+  const circle = await getCircle(params.slug, session?.user?.id);
+  
+  if (!circle) {
+    notFound();
+  }
 
-        <div className="mb-12">
-          <div className="mb-8 space-y-2">
-            <div className="h-8 w-64 bg-muted rounded animate-pulse" />
-            <div className="h-5 w-96 bg-muted rounded animate-pulse" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="space-y-3">
-                <div className="aspect-[4/3] bg-muted rounded-lg animate-pulse" />
-                <div className="space-y-2">
-                  <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
-                  <div className="h-4 bg-muted rounded w-1/2 animate-pulse" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-  if (error) return <div className="text-center text-red-500 py-20">Error: {error}</div>;
-  if (!circle) return <div className="text-center py-20">Circle not found.</div>;
+  const listings = circle.listings;
 
   const Banner = () => (
     <div className="relative h-48 md:h-64 w-full overflow-hidden">
@@ -205,31 +138,14 @@ export default function CirclePage() {
                 <div className="flex items-center gap-3 pt-6 border-t">
                   <span className="text-sm text-muted-foreground">Created by</span>
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={circle.creator.image} />
-                    <AvatarFallback>{circle.creator.name[0]}</AvatarFallback>
+                    <AvatarImage src={circle.creator.image || undefined} />
+                    <AvatarFallback>{circle.creator.name?.[0]}</AvatarFallback>
                   </Avatar>
                   <span className="text-sm font-semibold">{circle.creator.name}</span>
                 </div>
               </div>
               
-              {session && (
-                <Button 
-                  onClick={handleMembership} 
-                  disabled={isJoining}
-                  size="lg"
-                  variant={circle.isMember ? "outline" : "default"}
-                  className="md:mt-0 min-w-[160px] font-medium"
-                >
-                  {isJoining ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : circle.isMember ? (
-                    <UserMinus className="mr-2 h-4 w-4" />
-                  ) : (
-                    <UserPlus className="mr-2 h-4 w-4" />
-                  )}
-                  {circle.isMember ? 'Leave Circle' : 'Join Circle'}
-                </Button>
-              )}
+              <CircleMembershipButton circle={circle} isMemberInitial={circle.isMember} />
             </div>
           </div>
         </Card>
@@ -243,13 +159,13 @@ export default function CirclePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {listings.map(listing => (
                 <Link href={`/listings/${listing.slug}`} key={listing.id}>
-                <SearchListingCard
+                <ListingCard
                   id={listing.id}
                   slug={listing.slug}
                   title={listing.title}
                   category={listing.category?.name ?? "General"}
                   pricePerDay={listing.pricePerDay}
-                  location={listing.location?.city ?? "Unknown"}
+                  location={(listing.location as any)?.city ?? "Unknown"}
                   image={listing.images?.[0]?.url ?? "/placeholder.svg"}
                   rating={listing.rating ?? 0}
                   reviewCount={0}

@@ -85,6 +85,7 @@ model Profile {
 model Category {
   id       String    @id @default(cuid())
   name     String    @unique
+  slug     String?    @unique
   listings Listing[]
 }
 
@@ -281,4 +282,14 @@ model CircleMember {
   createdAt DateTime @default(now())
 
   @@unique([circleId, userId])
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, LayoutDashboard, Package, Users, Calendar, Tag, AlertCircle, TrendingUp, ShoppingBag, UserCheck, Plus, Edit2, Trash2, DollarSign, Shield } from 'lucide-react';
@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { CardDescription } from '@/components/ui/card';
+import MessagesTable from './_components/MessagesTable';
 
 interface Listing {
   id: string;
@@ -66,6 +67,9 @@ export default function AdminDashboard() {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [messages, setMessages] = useState<any[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(true);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/listings')
@@ -118,6 +122,11 @@ export default function AdminDashboard() {
       .then(res => { if (!res.ok) throw new Error('Failed to fetch categories'); return res.json(); })
       .then(data => { setCategories(data); setCategoriesLoading(false); })
       .catch(err => { setCategoriesError(err.message); setCategoriesLoading(false); });
+
+    fetch('/api/admin/messages')
+      .then(res => { if (!res.ok) throw new Error('Failed to fetch messages'); return res.json(); })
+      .then(data => { setMessages(data); setMessagesLoading(false); })
+      .catch(err => { setMessagesError(err.message); setMessagesLoading(false); });
   }, []);
 
   const handleStatusChange = async (listingId: string, status: ListingStatus) => {
@@ -251,6 +260,8 @@ export default function AdminDashboard() {
   };
 
   const activeTab = useAppSelector((state) => state.admin.activeTab);
+
+  const dispatch = useAppDispatch();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -504,6 +515,25 @@ export default function AdminDashboard() {
                   </Table>
                 </CardContent>
               </Card>
+            )}
+          </div>
+        );
+      case 'messages':
+        return (
+          <div className="space-y-6">
+            {messagesLoading ? (
+              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            ) : messagesError ? (
+              <Card className="border-destructive">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 text-destructive">
+                    <AlertCircle className="h-5 w-5" />
+                    <p>Error: {messagesError}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <MessagesTable />
             )}
           </div>
         );

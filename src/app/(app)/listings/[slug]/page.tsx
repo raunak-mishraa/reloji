@@ -1,109 +1,81 @@
-"use client";
-
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { Loader2, MapPin, Shield, Star, MessageCircle, Info, Phone } from 'lucide-react';
+import { notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import { Metadata, ResolvingMetadata } from 'next';
+import { MapPin, Shield, Star } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import PremiumModal from '@/components/PremiumModal';
+import ListingBookingForm from './ListingBookingForm';
 
-export default function ListingPage() {
-  const { slug } = useParams();
-  const { data: session, status: sessionStatus } = useSession();
-  const [listing, setListing] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [isBooking, setIsBooking] = useState(false);
-  const [hasExistingBooking, setHasExistingBooking] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  
-  // Check if current user is the owner
-  const isOwner = session?.user?.id && listing?.ownerId === session.user.id;
+interface ListingPageProps {
+  params: { slug: string };
+}
 
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+async function getListing(slug: string) {
+  const listing = await prisma.listing.findUnique({
+    where: { slug },
+    include: {
+      images: true,
+      category: true,
+      owner: {
+        select: { id: true, name: true, image: true, createdAt: true },
+      },
+      reviews: {
+        include: {
+          reviewer: { select: { name: true, image: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
+    },
+  });
+  return listing;
+}
 
-  // Load listing
-  useEffect(() => {
-    if (slug) {
-      fetch(`/api/listings/${slug}`)
-        .then(res => {
-          if (!res.ok) throw new Error('Failed to fetch listing');
-          return res.json();
-        })
-        .then(data => {
-          setListing(data);
-          setIsLoading(false);
-        })
-        .catch(err => {
-          setError(err.message);
-          setIsLoading(false);
-        });
-    }
-  }, [slug]);
+export async function generateMetadata(
+  { params }: ListingPageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const listing = await getListing(params.slug);
 
-  // Check for existing booking
-  useEffect(() => {
-    if (slug && session?.user?.id) {
-      fetch(`/api/bookings/check?listingSlug=${slug}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.hasBooking) {
-            setHasExistingBooking(true);
-          }
-        })
-        .catch(console.error);
-    }
-  }, [slug, session]);
+  if (!listing) {
+    return {
+      title: 'Listing Not Found',
+    };
+  }
 
-  // Payment integration removed: no external SDK required.
+  const previousImages = (await parent).openGraph?.images || [];
+  const firstImage = listing.images[0]?.url;
 
-  const handleBookingRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!session) {
-      setBookingError("Please sign in to make a booking.");
-      return;
-    }
-    setIsBooking(true);
-    setBookingError(null);
-    setBookingSuccess(false);
-    
+  const openGraphImages = firstImage ? [firstImage, ...previousImages] : previousImages;
+  const twitterImages = firstImage ? [firstImage] : undefined;
 
-    try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId: listing.id, startDate, endDate }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to create booking');
-      }
-
-      await response.json();
-      setBookingSuccess(true);
-    } catch (err: any) {
-      setBookingError(err.message);
-    } finally {
-      setIsBooking(false);
-    }
+  return {
+    title: listing.title,
+    description: listing.description.substring(0, 160),
+    openGraph: {
+      title: `${listing.title} on Reloji`,
+      description: listing.description.substring(0, 160),
+      images: openGraphImages,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${listing.title} on Reloji`,
+      description: listing.description.substring(0, 160),
+      images: twitterImages,
+    },
   };
+}
 
-  if (isLoading) return <div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin" /></div>;
-  if (error) return <div className="text-center text-red-500 py-12">Error: {error}</div>;
-  if (!listing) return <div className="text-center py-12">Listing not found.</div>;
+export default async function ListingPage({ params }: ListingPageProps) {
+  const listing = await getListing(params.slug);
+
+  if (!listing) {
+    notFound();
+  }
 
   return (
-    <>
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-8">
         <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
@@ -142,7 +114,7 @@ export default function ListingPage() {
                     <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
-                        <span>{listing.location?.city || 'Location not set'}</span>
+                        <span>{(listing.location as any)?.city || 'Location not set'}</span>
                       </div>
                       {listing.rating > 0 && (
                         <>
@@ -150,7 +122,7 @@ export default function ListingPage() {
                             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                             <span className="font-semibold">{listing.rating.toFixed(1)}</span>
                           </div>
-                          <span>(24 reviews)</span>
+                          <span>({listing.reviews.length} reviews)</span>
                         </>
                       )}
                     </div>
@@ -168,7 +140,7 @@ export default function ListingPage() {
                 <Card className="p-4 md:p-5">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <Avatar className="h-14 w-14 md:h-12 md:w-12">
-                      <AvatarImage src={listing.owner.image} alt={listing.owner.name} />
+                      <AvatarImage src={listing.owner.image || undefined} alt={listing.owner.name || ''} />
                       <AvatarFallback>{listing.owner.name?.[0]}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -179,23 +151,6 @@ export default function ListingPage() {
                         <span className="whitespace-nowrap">Member since {new Date(listing.owner.createdAt).getFullYear()}</span>
                       </div>
                     </div>
-                    <Button 
-                      size="default"
-                      className="w-full sm:w-auto relative overflow-hidden group bg-gradient-to-r from-[#0f8c27] via-[#0da024] to-[#0f8c27] hover:from-[#0da024] hover:via-[#0b8a1f] hover:to-[#0da024] text-white font-bold shadow-lg shadow-[#0f8c27]/30 hover:shadow-xl hover:shadow-[#0f8c27]/50 hover:scale-[1.02] transition-all duration-300 border-0"
-                      onClick={() => {
-                        if (session?.user?.isPremium) {
-                          // Implement logic to show number
-                        } else {
-                          setShowPremiumModal(true);
-                        }
-                      }}
-                    >
-                      <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
-                      <span className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.3),transparent_50%)]"></span>
-                      <Phone className="h-4 w-4 mr-2 relative z-10 drop-shadow-sm" />
-                      <span className="hidden sm:inline relative z-10 tracking-wide">Show Number</span>
-                      <span className="sm:hidden relative z-10 tracking-wide">Contact</span>
-                    </Button>
                   </div>
                 </Card>
               )}
@@ -261,7 +216,7 @@ export default function ListingPage() {
                         <div className="flex items-center justify-center gap-1 my-1">
                           <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                         </div>
-                        <div className="text-sm text-muted-foreground">Based on reviews</div>
+                        <div className="text-sm text-muted-foreground">Based on {listing.reviews.length} reviews</div>
                       </div>
                     </div>
                   ) : (
@@ -276,7 +231,7 @@ export default function ListingPage() {
                         <Card key={i} className="p-4">
                           <div className="flex items-start gap-3">
                             <Avatar>
-                              <AvatarImage src={review.reviewer?.image} />
+                              <AvatarImage src={review.reviewer?.image || undefined} />
                               <AvatarFallback>{review.reviewer?.name?.[0]}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
@@ -297,12 +252,12 @@ export default function ListingPage() {
                 </TabsContent>
 
                 <TabsContent value="location">
-                  {listing.location?.coords?.lat && listing.location?.coords?.lng ? (
+                  {(listing.location as any)?.coords?.lat && (listing.location as any)?.coords?.lng ? (
                     <div className="space-y-3">
                       <div className="aspect-video bg-muted rounded-lg overflow-hidden">
                         {(() => {
-                          const lat = listing.location.coords.lat as number;
-                          const lng = listing.location.coords.lng as number;
+                          const lat = (listing.location as any).coords.lat as number;
+                          const lng = (listing.location as any).coords.lng as number;
                           const delta = 0.01;
                           const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join('%2C');
                           const marker = `${lat}%2C${lng}`;
@@ -310,14 +265,14 @@ export default function ListingPage() {
                           return <iframe title="map" className="w-full h-full" src={src} />;
                         })()}
                       </div>
-                      <p className="text-sm text-muted-foreground">{listing.location?.city}</p>
+                      <p className="text-sm text-muted-foreground">{(listing.location as any)?.city}</p>
                     </div>
                   ) : (
                     <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
                       <div className="text-center text-muted-foreground">
                         <MapPin className="h-12 w-12 mx-auto mb-2" />
                         <p>Map view unavailable</p>
-                        <p className="text-sm">{listing.location?.city || 'Location not specified'}</p>
+                        <p className="text-sm">{(listing.location as any)?.city || 'Location not specified'}</p>
                       </div>
                     </div>
                   )}
@@ -329,96 +284,18 @@ export default function ListingPage() {
           {/* Booking Sidebar - Right Side */}
           <div className="lg:col-span-1">
             <Card className="p-5 md:p-6 space-y-4 md:space-y-6 lg:sticky lg:top-24">
-              {/* Price */}
-              <div>
-                <div className="flex items-baseline gap-2 mb-3">
-                  <span className="text-2xl md:text-3xl font-bold text-primary">₹{listing.pricePerDay}</span>
-                  <span className="text-sm md:text-base text-muted-foreground">/ day</span>
-                </div>
-                {listing.depositAmount && (
-                  <p className="text-sm text-muted-foreground">+ ₹{listing.depositAmount} deposit</p>
-                )}
+              <div className="flex items-baseline gap-2 mb-3">
+                <span className="text-2xl md:text-3xl font-bold text-primary">₹{listing.pricePerDay}</span>
+                <span className="text-sm md:text-base text-muted-foreground">/ day</span>
               </div>
-
-              {/* Booking Form or Owner Message */}
-              {isOwner ? (
-                <Alert className="bg-blue-50 border-blue-200">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <AlertTitle className="text-blue-800">This is your listing</AlertTitle>
-                  <AlertDescription className="text-blue-700">
-                    You cannot book your own item.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <>
-                  {bookingError && (
-                    <Alert variant="destructive">
-                      <AlertTitle>Error</AlertTitle>
-                      <AlertDescription>{bookingError}</AlertDescription>
-                    </Alert>
-                  )}
-                  {bookingSuccess && (
-                    <Alert className="bg-green-50 border-green-200">
-                      <AlertTitle className="text-green-800">Booking Created</AlertTitle>
-                      <AlertDescription className="text-green-700">Your request has been submitted.</AlertDescription>
-                    </Alert>
-                  )}
-
-                  {hasExistingBooking ? (
-                    <Alert>
-                      <Info className="h-4 w-4" />
-                      <AlertTitle>Already Booked</AlertTitle>
-                      <AlertDescription>
-                        You already have an active or pending booking for this item.
-                      </AlertDescription>
-                    </Alert>
-                  ) : (
-                  <form onSubmit={handleBookingRequest} className="space-y-4">
-                    <div>
-                      <label className="text-sm md:text-base font-medium mb-2 block">Rental period</label>
-                      <div className="space-y-2">
-                        <input 
-                          type="date" 
-                          value={startDate} 
-                          onChange={e => setStartDate(e.target.value)} 
-                          required 
-                          className="w-full px-3 py-2 rounded-md border border-input bg-background" 
-                          placeholder="Start date"
-                        />
-                        <input 
-                          type="date" 
-                          value={endDate} 
-                          onChange={e => setEndDate(e.target.value)} 
-                          required 
-                          className="w-full px-3 py-2 rounded-md border border-input bg-background" 
-                          placeholder="End date"
-                        />
-                      </div>
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      className="w-full font-semibold" 
-                      size="lg"
-                      disabled={isBooking || sessionStatus !== 'authenticated'}
-                    >
-                      {isBooking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {sessionStatus !== 'authenticated' ? 'Sign in to book' : 'Request to Borrow'}
-                    </Button>
-                  </form>
-                  )}
-                </>
+              {listing.depositAmount && (
+                <p className="text-sm text-muted-foreground">+ ₹{listing.depositAmount} deposit</p>
               )}
-
-              <p className="text-xs md:text-sm text-center text-muted-foreground leading-relaxed">
-                You won't be charged until the owner approves your request
-              </p>
+              <ListingBookingForm listing={listing} />
             </Card>
           </div>
         </div>
       </div>
     </div>
-    <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
-    </>
   )
 }

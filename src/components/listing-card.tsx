@@ -1,8 +1,8 @@
-import { Card } from "@/components/ui/card"
+import { AuthCard } from "@/components/ui/auth-card"
 import { Badge } from "@/components/ui/badge"
 import { Heart, MapPin, Star } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useState } from "react"
+// import { Button } from "@/components/ui/button"
+// import { useState } from "react"
 
 interface ListingCardProps {
   id: string;
@@ -31,7 +31,7 @@ export function ListingCard({
   // const [favorited, setFavorited] = useState(isFavorited)
 
   return (
-    <Card className="overflow-hidden border hover-elevate active-elevate-2 transition-shadow cursor-pointer" data-testid="card-listing">
+    <AuthCard className="overflow-hidden border hover-elevate active-elevate-2 transition-shadow cursor-pointer" data-testid="card-listing">
       <div className="relative aspect-[4/3] overflow-hidden">
         <img
           src={image}
@@ -79,6 +79,6 @@ export function ListingCard({
           </div>
         </div>
       </div>
-    </Card>
+    </AuthCard>
   )
 }

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { ListingCard as SearchListingCard } from "@/components/listing-card";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import ListingCardSkeleton from "@/components/ListingCardSkeleton";
 import { Loader2, PackageOpen, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
+import Link from "next/link";
 // This is a simplified version of the Listing type
 interface Listing {
   id: string;
@@ -33,6 +34,8 @@ type ListingsFilters = {
 };
 
 export default function Listings(props: ListingsFilters = {}) {
+  const { status } = useSession();
+  const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +113,18 @@ export default function Listings(props: ListingsFilters = {}) {
         <p className="text-muted-foreground mb-6 max-w-md">
           Try adjusting your filters or be the first to list an item in this area!
         </p>
-        <Button size="lg">Create a Listing</Button>
+        <Button 
+          size="lg"
+          onClick={() => {
+            if (status === 'authenticated') {
+              router.push('/listings/new');
+            } else {
+              router.push('/signin');
+            }
+          }}
+        >
+          Create a Listing
+        </Button>
       </div>
     );
   }
