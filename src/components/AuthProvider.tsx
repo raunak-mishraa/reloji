@@ -1,11 +1,22 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
+import { Provider } from "react-redux";
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from '@/store/store';
 
 export default function AuthProvider({
   children,
 }: { 
   children: React.ReactNode;
 }) {
-  return <SessionProvider>{children}</SessionProvider>;
+  return (
+    <SessionProvider>
+      <Provider store={store}>
+        <PersistGate loading={null} persistor={persistor}>
+          {children}
+        </PersistGate>
+      </Provider>
+    </SessionProvider>
+  );
 }
