@@ -6,9 +6,9 @@ import { prisma } from "@/lib/prisma";
 // POST /api/circles/[slug]/members - Join a circle
 export async function POST(
   req: Request,
-  context: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = context.params;
+  const { slug } = await context.params;
   const session = await getServerSession(authOptions);
   if (!session || !session.user?.id) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -49,8 +49,9 @@ export async function POST(
 // DELETE /api/circles/[slug]/members - Leave a circle
 export async function DELETE(
   req: Request,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await context.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
@@ -58,7 +59,7 @@ export async function DELETE(
     }
 
     const circle = await prisma.circle.findUnique({
-      where: { slug: params.slug },
+      where: { slug: slug },
     });
 
     if (!circle) {
@@ -80,7 +81,7 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
   } catch (error: any) {
-    console.error(`Error in DELETE /api/circles/[slug]/members:`, { slug: params.slug, error });
+    console.error(`Error in DELETE /api/circles/[slug]/members:`, { slug: slug, error });
     if (error.code === 'P2025') {
       return new NextResponse("You are not a member of this circle.", { status: 404 });
     }

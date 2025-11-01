@@ -4,7 +4,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { BookingStatus, Role } from "@prisma/client";
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return new NextResponse("Unauthorized", { status: 401 });
 
@@ -18,13 +19,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const updated = await prisma.booking.update({
-      where: { id: params.id },
+      where: { id },
       data: { status },
     });
 
     return NextResponse.json(updated);
   } catch (e) {
-    console.error(`Error updating booking ${params.id}:`, e);
+    console.error(`Error updating booking ${id}:`, e);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

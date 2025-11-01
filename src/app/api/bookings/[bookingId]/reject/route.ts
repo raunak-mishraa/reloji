@@ -6,15 +6,14 @@ import { pusherServer } from "@/lib/pusher";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { bookingId: string } }
+  context: { params: Promise<{ bookingId: string }> }
 ) {
+  const { bookingId } = await context.params;
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.id) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
-
-  const { bookingId } = params;
 
   try {
     // Verify the booking exists and belongs to one of the user's listings

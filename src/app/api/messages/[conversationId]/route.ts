@@ -9,9 +9,9 @@ import { pusherServer } from '@/lib/pusher';
 
 export async function GET(
   req: Request,
-  { params: rawParams }: { params: { conversationId: string } }
+  context: { params: Promise<{ conversationId: string }> }
 ) {
-  const params = await rawParams;
+  const { conversationId } = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return new NextResponse('Unauthorized', { status: 401 });
@@ -20,7 +20,7 @@ export async function GET(
   try {
     const conversation = await prisma.conversation.findUnique({
       where: {
-        id: params.conversationId,
+        id: conversationId,
         participants: {
           some: {
             id: session.user.id,
@@ -43,16 +43,16 @@ export async function GET(
 
     return NextResponse.json(conversation);
   } catch (error) {
-    console.error(`Error fetching conversation ${params.conversationId}:`, error);
+    console.error(`Error fetching conversation ${conversationId}:`, error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }
 
 export async function POST(
   req: Request,
-  { params: rawParams }: { params: { conversationId: string } }
+  context: { params: Promise<{ conversationId: string }> }
 ) {
-  const params = await rawParams;
+  const { conversationId } = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return new NextResponse('Unauthorized', { status: 401 });
@@ -66,7 +66,7 @@ export async function POST(
 
     const newMessage = await prisma.message.create({
       data: {
-        conversationId: params.conversationId,
+        conversationId: conversationId,
         senderId: session.user.id,
         content,
       },
@@ -108,7 +108,7 @@ export async function POST(
 
     return NextResponse.json(newMessage, { status: 201 });
   } catch (error) {
-    console.error(`Error sending message to conversation ${params.conversationId}:`, error);
+    console.error(`Error sending message to conversation ${conversationId}:`, error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

@@ -37,6 +37,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function NewListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreated, setIsCreated] = useState(false);
   const { toast } = useToast();
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -127,35 +128,45 @@ export default function NewListingPage() {
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('folder', 'reloji');
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    const uploadResponse = await fetch('/api/uploads/cloudinary', {
-      method: 'POST',
-      body: formData,
+    setIsUploading(true);
+
+    const uploadPromises = Array.from(files).map(async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'reloji');
+
+      const uploadResponse = await fetch('/api/uploads/cloudinary', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        let msg = `Failed to upload ${file.name}.`;
+        try {
+          msg = await uploadResponse.text();
+        } catch {}
+        throw new Error(msg || 'Server returned an error.');
+      }
+
+      const data = await uploadResponse.json();
+      const imageUrl = (data.url as string) || (data.secure_url as string);
+      if (!imageUrl) {
+        throw new Error('Upload response missing image URL.');
+      }
+      return imageUrl;
     });
 
-    if (!uploadResponse.ok) {
-      let msg = 'Failed to upload image.';
-      try { msg = await uploadResponse.text(); } catch {}
-      toast({ title: 'Upload error', description: msg || 'Server returned an error.', variant: 'destructive' });
+    try {
+      const urls = await Promise.all(uploadPromises);
+      setImageUrls((prev) => [...prev, ...urls]);
+    } catch (error: any) {
+      toast({ title: 'Upload error', description: error.message, variant: 'destructive' });
+    } finally {
       setIsUploading(false);
-      return;
     }
-
-    const data = await uploadResponse.json();
-    const imageUrl = (data.url as string) || (data.secure_url as string);
-    if (!imageUrl) {
-      toast({ title: 'Error', description: 'Upload response missing image URL.', variant: 'destructive' });
-      setIsUploading(false);
-      return;
-    }
-    setImageUrls((prev) => [...prev, imageUrl]);
-    setIsUploading(false);
   };
 
   async function onSubmit(values: FormValues) {
@@ -186,7 +197,8 @@ export default function NewListingPage() {
       }
 
       const newListing = await response.json();
-      toast({ title: "Success", description: "Your listing has been created successfully!" });
+      toast({ title: 'Success', description: 'Your listing has been created successfully!' });
+      setIsCreated(true);
       router.push(`/listings/${newListing.slug}`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -450,6 +462,7 @@ export default function NewListingPage() {
                     id="image-upload"
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleImageUpload}
                     className="hidden"
                     disabled={isUploading}
@@ -477,10 +490,10 @@ export default function NewListingPage() {
 
             {/* Submit Button */}
             <div className="flex justify-end gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting || isCreated}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting} size="lg" className="min-w-32">
+              <Button type="submit" disabled={isSubmitting || isCreated} size="lg" className="min-w-32">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

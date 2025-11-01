@@ -39,6 +39,7 @@ export async function POST(req: Request) {
           listingId: booking.listingId,
           rating,
           comment,
+          reviewerId: session.user.id,
         },
       });
 

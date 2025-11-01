@@ -6,8 +6,9 @@ import { BookingStatus } from '@prisma/client';
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { bookingId: string } }
+  context: { params: Promise<{ bookingId: string }> }
 ) {
+  const { bookingId } = await context.params;
   const session = await getServerSession(authOptions);
   if (!session || !session.user?.id) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -20,7 +21,7 @@ export async function PATCH(
     }
 
     const booking = await prisma.booking.findUnique({
-      where: { id: params.bookingId },
+      where: { id: bookingId },
       include: { listing: true },
     });
 
@@ -39,13 +40,13 @@ export async function PATCH(
     }
 
     const updatedBooking = await prisma.booking.update({
-      where: { id: params.bookingId },
+      where: { id: bookingId },
       data: { status },
     });
 
     return NextResponse.json(updatedBooking);
   } catch (error) {
-    console.error(`Error updating booking ${params.bookingId}:`, error);
+    console.error(`Error updating booking ${bookingId}:`, error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

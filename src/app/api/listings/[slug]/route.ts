@@ -5,12 +5,13 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: Request,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await context.params;
   try {
     const listing = await prisma.listing.findUnique({
       where: {
-        slug: params.slug,
+        slug: slug,
         deletedAt: null, // Ensure we don't fetch soft-deleted listings
       },
       include: {
@@ -50,8 +51,9 @@ export async function GET(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { slug: string } }
+  context: { params: Promise<{ slug: string }> }
 ) {
+  const { slug } = await context.params;
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user?.id) {
@@ -61,7 +63,7 @@ export async function DELETE(
   try {
     const listing = await prisma.listing.findUnique({
       where: {
-        slug: params.slug,
+        slug: slug,
       },
     });
 

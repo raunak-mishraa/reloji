@@ -6,8 +6,9 @@ import { ListingStatus } from '@prisma/client';
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   const session = await getServerSession(authOptions);
   // @ts-ignore
   if (!session || session.user?.role !== 'ADMIN') {
@@ -21,13 +22,13 @@ export async function PATCH(
     }
 
     const updatedListing = await prisma.listing.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { status },
     });
 
     return NextResponse.json(updatedListing);
   } catch (error) {
-    console.error(`Error updating listing ${params.id}:`, error);
+    console.error(`Error updating listing ${id}:`, error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
