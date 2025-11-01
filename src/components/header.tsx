@@ -26,6 +26,10 @@ import PhoneVerificationModal from "./PhoneVerificationModal";
 function UserNav() {
   const auth = useAppSelector(s => s.auth);
 
+  if (auth.status === 'loading') return (
+    <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse" />
+  );
+
   if (auth.status !== 'authenticated' || !auth.user) return null;
 
   return (
